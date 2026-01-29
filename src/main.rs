@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::hash::Hash;
-use std::rc::Rc;
 use std::sync::atomic::{self, AtomicU64};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -74,11 +72,11 @@ impl_size_and_pos!(u32);
 //impl_size_and_pos!(i32);
 
 #[derive(Debug, Clone)]
-enum ElementInfo {
+enum ElementMap {
     Empty,
     Window { id: Id, size_pos: SizeAndPos },
-    Vertical { elements: Vec<ElementInfo> },
-    Horizontal { elements: Vec<ElementInfo> },
+    Vertical { elements: Vec<ElementMap> },
+    Horizontal { elements: Vec<ElementMap> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,7 +98,7 @@ where
     }
 }
 
-impl ElementInfo {
+impl ElementMap {
     fn new() -> Self {
         Self::Empty
     }
@@ -109,6 +107,10 @@ impl ElementInfo {
             Self::Window { id, .. } => Some(*id),
             _ => None,
         }
+    }
+
+    fn is_window(&self) -> bool {
+        matches!(self, Self::Window { .. })
     }
     fn has_id(&self, target: Id) -> bool {
         match self {
@@ -141,12 +143,68 @@ impl ElementInfo {
             }
         }
     }
-    fn delete(&mut self, id: Id) {}
+    #[must_use]
+    fn delete<F>(&mut self, target: Id, f: &mut F) -> bool
+    where
+        F: InsertCallback,
+    {
+        let fit_way = match self {
+            Self::Vertical { .. } => InsertWay::Vertical,
+            // NOTE: it will only be used in pattern three, so,
+            // this part will always be Self::Horizontal
+            _ => InsertWay::Horizontal,
+        };
+        match self {
+            Self::Empty => false,
+            // NOTE: this logic only comes when there is only one window exist
+            Self::Window { id, .. } => {
+                if *id != target {
+                    return false;
+                }
+                *self = Self::Empty;
+                true
+            }
+            Self::Vertical { elements } | Self::Horizontal { elements } => {
+                let mut position: Option<usize> = None;
+                let mut window_size: Option<SizeAndPos> = None;
+                for (index, element) in elements.iter_mut().enumerate() {
+                    if let Self::Window { id, size_pos } = element
+                        && *id == target
+                    {
+                        position = Some(index);
+                        window_size = Some(*size_pos);
+                        break;
+                    }
+                    if element.delete(target, f) {
+                        return true;
+                    }
+                }
+                let (Some(pos), Some(window_size)) = (position, window_size) else {
+                    return false;
+                };
+                let adjust_pos = if pos == 0 { 1 } else { pos - 1 };
+
+                let element = &mut elements[adjust_pos];
+                // NOTE: now we need a new function to expand the element.
+                // And we need a enum contains four fields
+                let _ = element;
+                // Then we remove the deleted guy
+                elements.remove(pos);
+
+                // it the element only one existed, downgrade it
+                if elements.len() == 1 {
+                    *self = elements[0].clone();
+                }
+
+                todo!()
+            }
+        }
+    }
 
     /// The return shows the new inserted position. it should be saved. but you can know it during
     /// the result show if the operation is succeeded
     #[must_use]
-    fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
+    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
     where
         F: InsertCallback,
     {
@@ -172,14 +230,14 @@ impl ElementInfo {
                 f.callback(id, new_size_pos);
                 let elements = vec![
                     self.clone(),
-                    ElementInfo::Window {
+                    ElementMap::Window {
                         id,
                         size_pos: new_size_pos,
                     },
                 ];
                 *self = match way {
-                    InsertWay::Vertical => ElementInfo::Vertical { elements },
-                    InsertWay::Horizontal => ElementInfo::Horizontal { elements },
+                    InsertWay::Vertical => ElementMap::Vertical { elements },
+                    InsertWay::Horizontal => ElementMap::Horizontal { elements },
                 };
                 true
             }
@@ -187,7 +245,7 @@ impl ElementInfo {
                 let mut to_insert_index: Option<usize> = None;
                 let mut to_return: Option<SizeAndPos> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
-                    if let ElementInfo::Window { id: o_id, size_pos } = element
+                    if let ElementMap::Window { id: o_id, size_pos } = element
                         && *o_id == target
                     {
                         if way == fit_way {
@@ -205,7 +263,7 @@ impl ElementInfo {
                 }
                 if let (Some(index), Some(to_return)) = (to_insert_index, to_return) {
                     let size_pos = to_return.clone();
-                    let window = ElementInfo::Window { id, size_pos };
+                    let window = ElementMap::Window { id, size_pos };
                     elements.insert(index + 1, window);
                     return true;
                 }
@@ -224,7 +282,7 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
 
 fn main() {
     let mut abc = 10;
-    let mut element_map = ElementInfo::new();
+    let mut element_map = ElementMap::new();
     dbg!(&element_map);
     let _ = element_map.insert(
         Id::unique(),
