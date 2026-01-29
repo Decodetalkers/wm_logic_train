@@ -94,12 +94,74 @@ enum InsertWay {
     Horizontal,
 }
 
+trait InsertCallback {
+    fn callback(&mut self, id: Id, s_a_p: Rc<RefCell<SizeAndPos>>);
+}
+
+impl<F> InsertCallback for F
+where
+    F: FnMut(Id, Rc<RefCell<SizeAndPos>>),
+{
+    fn callback(&mut self, id: Id, s_a_p: Rc<RefCell<SizeAndPos>>) {
+        self(id, s_a_p)
+    }
+}
+
 impl ElementInfo {
     fn new() -> Self {
         Self::Empty
     }
+    fn id(&self) -> Option<Id> {
+        match self {
+            Self::Window { id, .. } => Some(*id),
+            _ => None,
+        }
+    }
+    fn has_id(&self, target: Id) -> bool {
+        match self {
+            Self::Window { id, .. } => *id == target,
+            Self::Empty => true,
+            Self::Vertical { elements } | Self::Horizontal { elements } => {
+                for element in elements {
+                    if element.has_id(target) {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    }
 
-    fn insert(&mut self, id: Id, target: Id, way: InsertWay) -> Option<Rc<RefCell<SizeAndPos>>> {
+    // NOTE: not just find it, but return the insert position
+    fn find_element_mut(&mut self, target: Id) -> Option<&mut Self> {
+        match self {
+            Self::Empty => None,
+            Self::Window { id, .. } => (*id == target).then(|| self),
+            Self::Vertical { elements } | Self::Horizontal { elements } => {
+                for element in elements {
+                    let try_find = element.find_element_mut(target);
+                    if try_find.is_some() {
+                        return try_find;
+                    }
+                }
+                None
+            }
+        }
+    }
+    fn delete(&mut self, id: Id) {}
+
+    /// The return shows the new inserted position. it should be saved. but you can know it during
+    /// callback
+    fn insert<F>(
+        &mut self,
+        id: Id,
+        target: Id,
+        way: InsertWay,
+        f: &mut F,
+    ) -> Option<Rc<RefCell<SizeAndPos>>>
+    where
+        F: InsertCallback,
+    {
         let fit_way = match self {
             Self::Vertical { .. } => InsertWay::Vertical,
             // NOTE: it will only be used in pattern three, so,
@@ -110,6 +172,7 @@ impl ElementInfo {
             Self::Empty => {
                 let size = Rc::new(RefCell::new(DISPLAY_SIZE));
                 let size_r = size.clone();
+                f.callback(id, size.clone());
                 *self = Self::Window { id, size_pos: size };
                 Some(size_r)
             }
@@ -118,7 +181,9 @@ impl ElementInfo {
                     return None;
                 }
                 let new_size_pos = Rc::new(RefCell::new(size_pos.borrow_mut().split(way)));
+                f.callback(*o_id, size_pos.clone());
                 let new_size_pos_r = new_size_pos.clone();
+                f.callback(id, new_size_pos.clone());
                 let elements = vec![
                     self.clone(),
                     ElementInfo::Window {
@@ -147,9 +212,9 @@ impl ElementInfo {
                             to_insert_index = Some(index);
                             break;
                         }
-                        return element.insert(id, target, way);
+                        return element.insert(id, target, way, f);
                     }
-                    let insert_result = element.insert(id, target, way);
+                    let insert_result = element.insert(id, target, way, f);
                     if insert_result.is_some() {
                         return insert_result;
                     }
@@ -174,12 +239,21 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
 };
 
 fn main() {
+    let mut abc = 10;
     let mut element_map = ElementInfo::new();
     dbg!(&element_map);
-    element_map.insert(Id::unique(), Id::MAIN, InsertWay::Vertical);
+    element_map.insert(
+        Id::unique(),
+        Id::MAIN,
+        InsertWay::Vertical,
+        &mut |id, size| {
+            abc += 1;
+        },
+    );
+    println!("{abc}");
     dbg!(&element_map);
-    element_map.insert(Id::unique(), Id(0), InsertWay::Vertical);
-    dbg!(&element_map);
-    element_map.insert(Id::unique(), Id(0), InsertWay::Horizontal);
-    dbg!(&element_map);
+    //element_map.insert(Id::unique(), Id(0), InsertWay::Vertical);
+    //dbg!(&element_map);
+    //element_map.insert(Id::unique(), Id(0), InsertWay::Horizontal);
+    //dbg!(&element_map);
 }
