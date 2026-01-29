@@ -76,16 +76,9 @@ impl_size_and_pos!(u32);
 #[derive(Debug, Clone)]
 enum ElementInfo {
     Empty,
-    Window {
-        id: Id,
-        size_pos: Rc<RefCell<SizeAndPos>>,
-    },
-    Vertical {
-        elements: Vec<ElementInfo>,
-    },
-    Horizontal {
-        elements: Vec<ElementInfo>,
-    },
+    Window { id: Id, size_pos: SizeAndPos },
+    Vertical { elements: Vec<ElementInfo> },
+    Horizontal { elements: Vec<ElementInfo> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,14 +88,14 @@ enum InsertWay {
 }
 
 trait InsertCallback {
-    fn callback(&mut self, id: Id, s_a_p: Rc<RefCell<SizeAndPos>>);
+    fn callback(&mut self, id: Id, s_a_p: SizeAndPos);
 }
 
 impl<F> InsertCallback for F
 where
-    F: FnMut(Id, Rc<RefCell<SizeAndPos>>),
+    F: FnMut(Id, SizeAndPos),
 {
-    fn callback(&mut self, id: Id, s_a_p: Rc<RefCell<SizeAndPos>>) {
+    fn callback(&mut self, id: Id, s_a_p: SizeAndPos) {
         self(id, s_a_p)
     }
 }
@@ -151,14 +144,9 @@ impl ElementInfo {
     fn delete(&mut self, id: Id) {}
 
     /// The return shows the new inserted position. it should be saved. but you can know it during
-    /// callback
-    fn insert<F>(
-        &mut self,
-        id: Id,
-        target: Id,
-        way: InsertWay,
-        f: &mut F,
-    ) -> Option<Rc<RefCell<SizeAndPos>>>
+    /// the result show if the operation is succeeded
+    #[must_use]
+    fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
     where
         F: InsertCallback,
     {
@@ -170,20 +158,18 @@ impl ElementInfo {
         };
         match self {
             Self::Empty => {
-                let size = Rc::new(RefCell::new(DISPLAY_SIZE));
-                let size_r = size.clone();
-                f.callback(id, size.clone());
+                let size = DISPLAY_SIZE;
+                f.callback(id, size);
                 *self = Self::Window { id, size_pos: size };
-                Some(size_r)
+                true
             }
             Self::Window { size_pos, id: o_id } => {
                 if *o_id != target {
-                    return None;
+                    return false;
                 }
-                let new_size_pos = Rc::new(RefCell::new(size_pos.borrow_mut().split(way)));
-                f.callback(*o_id, size_pos.clone());
-                let new_size_pos_r = new_size_pos.clone();
-                f.callback(id, new_size_pos.clone());
+                let new_size_pos = size_pos.split(way);
+                f.callback(*o_id, *size_pos);
+                f.callback(id, new_size_pos);
                 let elements = vec![
                     self.clone(),
                     ElementInfo::Window {
@@ -195,19 +181,17 @@ impl ElementInfo {
                     InsertWay::Vertical => ElementInfo::Vertical { elements },
                     InsertWay::Horizontal => ElementInfo::Horizontal { elements },
                 };
-
-                Some(new_size_pos_r)
+                true
             }
             Self::Vertical { elements } | Self::Horizontal { elements } => {
                 let mut to_insert_index: Option<usize> = None;
-                let mut to_return: Option<Rc<RefCell<SizeAndPos>>> = None;
+                let mut to_return: Option<SizeAndPos> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
                     if let ElementInfo::Window { id: o_id, size_pos } = element
                         && *o_id == target
                     {
                         if way == fit_way {
-                            let new_size_pos =
-                                Rc::new(RefCell::new(size_pos.borrow_mut().split(way)));
+                            let new_size_pos = size_pos.split(way);
                             to_return = Some(new_size_pos);
                             to_insert_index = Some(index);
                             break;
@@ -215,7 +199,7 @@ impl ElementInfo {
                         return element.insert(id, target, way, f);
                     }
                     let insert_result = element.insert(id, target, way, f);
-                    if insert_result.is_some() {
+                    if insert_result {
                         return insert_result;
                     }
                 }
@@ -223,9 +207,9 @@ impl ElementInfo {
                     let size_pos = to_return.clone();
                     let window = ElementInfo::Window { id, size_pos };
                     elements.insert(index + 1, window);
-                    return Some(to_return);
+                    return true;
                 }
-                None
+                return false;
             }
         }
     }
@@ -242,7 +226,7 @@ fn main() {
     let mut abc = 10;
     let mut element_map = ElementInfo::new();
     dbg!(&element_map);
-    element_map.insert(
+    let _ = element_map.insert(
         Id::unique(),
         Id::MAIN,
         InsertWay::Vertical,
@@ -252,8 +236,8 @@ fn main() {
     );
     println!("{abc}");
     dbg!(&element_map);
-    //element_map.insert(Id::unique(), Id(0), InsertWay::Vertical);
-    //dbg!(&element_map);
+    let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
+    dbg!(&element_map);
     //element_map.insert(Id::unique(), Id(0), InsertWay::Horizontal);
     //dbg!(&element_map);
 }
