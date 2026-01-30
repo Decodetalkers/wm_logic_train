@@ -18,44 +18,56 @@ impl Id {
         Id(COUNT.fetch_add(1, atomic::Ordering::Relaxed))
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+struct Size<T = u32> {
+    width: T,
+    height: T,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Position<T = u32> {
+    x: T,
+    y: T,
+}
 #[derive(Debug, Clone, Copy)]
 struct SizeAndPos<T = u32>
 where
     T: Copy,
 {
-    width: T,
-    height: T,
-    x: T,
-    y: T,
+    size: Size<T>,
+    position: Position<T>,
 }
 
 macro_rules! impl_size_and_pos {
-    ($Type: ident) => {
+    ($Type: ident, $Div:expr) => {
         impl SizeAndPos<$Type> {
             fn vertical(&mut self) -> Self {
-                let width = self.width / 2;
-                let height = self.height / 2;
-                self.width = width;
-                self.height = height;
-                let y = self.y + height;
+                let width = self.size.width / $Div;
+                let height = self.size.height / $Div;
+                self.size.width = width;
+                self.size.height = height;
+                let y = self.position.y + height;
                 Self {
-                    width,
-                    height,
-                    x: self.x,
-                    y,
+                    size: Size { width, height },
+                    position: Position {
+                        x: self.position.x,
+                        y,
+                    },
                 }
             }
             fn horizontal(&mut self) -> Self {
-                let width = self.width / 2;
-                let height = self.height / 2;
-                self.width = width;
-                self.height = height;
-                let x = self.x + width;
+                let width = self.size.width / $Div;
+                let height = self.size.height / $Div;
+                self.size.width = width;
+                self.size.height = height;
+                let x = self.position.x + width;
                 Self {
-                    width,
-                    height,
-                    x,
-                    y: self.y,
+                    size: Size { width, height },
+                    position: Position {
+                        x,
+                        y: self.position.y,
+                    },
                 }
             }
             fn split(&mut self, way: InsertWay) -> Self {
@@ -68,8 +80,7 @@ macro_rules! impl_size_and_pos {
     };
 }
 
-impl_size_and_pos!(u32);
-//impl_size_and_pos!(i32);
+impl_size_and_pos!(u32, 2);
 
 #[derive(Debug, Clone)]
 enum ElementMap {
@@ -83,6 +94,14 @@ enum ElementMap {
 enum InsertWay {
     Vertical,
     Horizontal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReMapDirection {
+    Left,
+    Right,
+    Top,
+    Bottom,
 }
 
 trait InsertCallback {
@@ -106,6 +125,43 @@ impl ElementMap {
         match self {
             Self::Window { id, .. } => Some(*id),
             _ => None,
+        }
+    }
+    pub fn size(&self) -> Size {
+        match self {
+            Self::Empty => Size {
+                width: 0,
+                height: 0,
+            },
+            Self::Window { size_pos, .. } => size_pos.size,
+            Self::Vertical { elements } => {
+                let width = elements[0].width();
+                let height = elements.iter().map(|w| w.height()).sum();
+                Size { width, height }
+            }
+            Self::Horizontal { elements } => {
+                let height = elements[0].height();
+                let width = elements.iter().map(|w| w.width()).sum();
+                Size { width, height }
+            }
+        }
+    }
+
+    pub fn width(&self) -> u32 {
+        match self {
+            Self::Empty => 0,
+            Self::Window { size_pos, .. } => size_pos.size.width,
+            Self::Vertical { elements } => elements[0].width(),
+            Self::Horizontal { elements } => elements.iter().map(|w| w.width()).sum(),
+        }
+    }
+
+    pub fn height(&self) -> u32 {
+        match self {
+            Self::Empty => 0,
+            Self::Window { size_pos, .. } => size_pos.size.height,
+            Self::Vertical { elements } => elements[0].height(),
+            Self::Horizontal { elements } => elements.iter().map(|w| w.height()).sum(),
         }
     }
 
@@ -274,10 +330,11 @@ impl ElementMap {
 }
 
 const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
-    width: 1980,
-    height: 1080,
-    x: 0,
-    y: 0,
+    size: Size {
+        width: 1980,
+        height: 1080,
+    },
+    position: Position { x: 0, y: 0 },
 };
 
 fn main() {
