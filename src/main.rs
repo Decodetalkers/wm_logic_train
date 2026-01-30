@@ -81,6 +81,7 @@ macro_rules! impl_size_and_pos {
 }
 
 impl_size_and_pos!(u32, 2);
+impl_size_and_pos!(i32, 2);
 
 #[derive(Debug, Clone)]
 enum ElementMap {
@@ -102,6 +103,17 @@ enum ReMapDirection {
     Right,
     Top,
     Bottom,
+}
+
+impl ReMapDirection {
+    fn expend_way(insert_way: InsertWay, start: bool) -> Self {
+        match (insert_way, start) {
+            (InsertWay::Horizontal, true) => Self::Left,
+            (InsertWay::Horizontal, false) => Self::Right,
+            (InsertWay::Vertical, true) => Self::Top,
+            (InsertWay::Vertical, false) => Self::Bottom,
+        }
+    }
 }
 
 trait InsertCallback {
@@ -144,6 +156,19 @@ impl ElementMap {
                 let width = elements.iter().map(|w| w.width()).sum();
                 Size { width, height }
             }
+        }
+    }
+
+    // NOTE: how to design it? what should I do with the size_pos? how does it mean?
+    // maybe I need minus
+    fn expand<F>(&mut self, direction: ReMapDirection, size_pos: SizeAndPos, f: &mut F)
+    where
+        F: InsertCallback,
+    {
+        match self {
+            Self::Empty => {}
+            Self::Window { size_pos, .. } => {}
+            _ => todo!(),
         }
     }
 
@@ -222,25 +247,28 @@ impl ElementMap {
             }
             Self::Vertical { elements } | Self::Horizontal { elements } => {
                 let mut position: Option<usize> = None;
-                let mut window_size: Option<SizeAndPos> = None;
+                let mut window_s_a_p: Option<SizeAndPos> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
                     if let Self::Window { id, size_pos } = element
                         && *id == target
                     {
                         position = Some(index);
-                        window_size = Some(*size_pos);
+                        window_s_a_p = Some(*size_pos);
                         break;
                     }
                     if element.delete(target, f) {
                         return true;
                     }
                 }
-                let (Some(pos), Some(window_size)) = (position, window_size) else {
+                let (Some(pos), Some(s_a_p)) = (position, window_s_a_p) else {
                     return false;
                 };
-                let adjust_pos = if pos == 0 { 1 } else { pos - 1 };
+                let start = pos == 0;
+                let adjust_pos = if start { 1 } else { pos - 1 };
+                let expand_way = ReMapDirection::expend_way(fit_way, start);
 
                 let element = &mut elements[adjust_pos];
+                element.expand(expand_way, s_a_p, f);
                 // NOTE: now we need a new function to expand the element.
                 // And we need a enum contains four fields
                 let _ = element;
