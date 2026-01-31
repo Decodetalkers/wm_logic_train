@@ -1,25 +1,44 @@
-use std::ops::Add;
+use std::iter::Sum;
+use std::ops::{Add, Div};
+pub(crate) trait MapUnit:
+    Copy + Add<Output = Self> + Div<Output = Self> + Sum<Self>
+{
+    fn zero() -> Self;
+    fn two() -> Self;
+}
+
+macro_rules! impl_unit {
+    ($Type:ident, $value:expr, $value_2:expr) => {
+        impl MapUnit for $Type {
+            fn zero() -> Self {
+                $value
+            }
+            fn two() -> Self {
+                $value_2
+            }
+        }
+    };
+}
+
+impl_unit!(f32, 0., 2.);
+impl_unit!(i32, 0, 2);
+impl_unit!(u32, 0, 2);
+
 #[derive(Debug, Clone, Copy)]
 pub struct Size<T = f32> {
     pub width: T,
     pub height: T,
 }
 
-macro_rules! impl_size {
-    ($Type: ident) => {
-        impl Add for Size<$Type> {
-            type Output = Self;
-            fn add(self, other: Self) -> Self {
-                Self {
-                    width: self.width + other.width,
-                    height: self.height + other.height,
-                }
-            }
+impl<T: MapUnit> Add for Size<T> {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self {
+            width: self.width + other.width,
+            height: self.height + other.height,
         }
-    };
+    }
 }
-
-impl_size!(f32);
 
 #[derive(Debug, Clone, Copy)]
 pub struct Position<T = f32> {
@@ -27,22 +46,15 @@ pub struct Position<T = f32> {
     pub y: T,
 }
 
-macro_rules! impl_position {
-    ($Type: ident) => {
-        impl Add for Position<$Type> {
-            type Output = Self;
-            fn add(self, other: Self) -> Self {
-                Self {
-                    x: self.x + other.x,
-                    y: self.y + other.y,
-                }
-            }
+impl<T: MapUnit> Add for Position<T> {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
         }
-    };
+    }
 }
-
-impl_position!(f32);
-
 #[derive(Debug, Clone, Copy)]
 pub struct SizeAndPos<T = f32>
 where
@@ -58,55 +70,50 @@ pub enum InsertWay {
     Horizontal,
 }
 
-macro_rules! impl_size_and_pos {
-    ($Type: ident, $Div:expr) => {
-        impl Add for SizeAndPos<$Type> {
-            type Output = Self;
-            fn add(self, other: Self) -> Self {
-                Self {
-                    size: self.size + other.size,
-                    position: self.position + other.position,
-                }
-            }
+impl<T: MapUnit> Add for SizeAndPos<T> {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self {
+            size: self.size + other.size,
+            position: self.position + other.position,
         }
-        impl SizeAndPos<$Type> {
-            fn vertical(&mut self) -> Self {
-                let width = self.size.width / $Div;
-                let height = self.size.height / $Div;
-                self.size.width = width;
-                self.size.height = height;
-                let y = self.position.y + height;
-                Self {
-                    size: Size { width, height },
-                    position: Position {
-                        x: self.position.x,
-                        y,
-                    },
-                }
-            }
-            fn horizontal(&mut self) -> Self {
-                let width = self.size.width / $Div;
-                let height = self.size.height / $Div;
-                self.size.width = width;
-                self.size.height = height;
-                let x = self.position.x + width;
-                Self {
-                    size: Size { width, height },
-                    position: Position {
-                        x,
-                        y: self.position.y,
-                    },
-                }
-            }
-            pub fn split(&mut self, way: InsertWay) -> Self {
-                match way {
-                    InsertWay::Vertical => self.vertical(),
-                    InsertWay::Horizontal => self.horizontal(),
-                }
-            }
+    }
+}
+impl<T: MapUnit> SizeAndPos<T> {
+    fn vertical(&mut self) -> Self {
+        let width = self.size.width / T::two();
+        let height = self.size.height / T::two();
+        self.size.width = width;
+        self.size.height = height;
+        let y = self.position.y + height;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x: self.position.x,
+                y,
+            },
         }
-    };
+    }
+    fn horizontal(&mut self) -> Self {
+        let width = self.size.width / T::two();
+        let height = self.size.height / T::two();
+        self.size.width = width;
+        self.size.height = height;
+        let x = self.position.x + width;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x,
+                y: self.position.y,
+            },
+        }
+    }
+    pub fn split(&mut self, way: InsertWay) -> Self {
+        match way {
+            InsertWay::Vertical => self.vertical(),
+            InsertWay::Horizontal => self.horizontal(),
+        }
+    }
 }
 
-//impl_size_and_pos!(u32, 2);
-impl_size_and_pos!(f32, 2.);
+impl SizeAndPos<f32> {}

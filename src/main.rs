@@ -3,7 +3,7 @@ mod utils;
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 
-use crate::utils::{InsertWay, Position, Size, SizeAndPos};
+use crate::utils::{InsertWay, MapUnit, Position, Size, SizeAndPos};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// The id of the window.
@@ -24,11 +24,14 @@ impl Id {
 }
 
 #[derive(Debug, Clone)]
-enum ElementMap {
+enum ElementMap<T = f32>
+where
+    T: MapUnit,
+{
     Empty,
-    Window { id: Id, size_pos: SizeAndPos },
-    Vertical { elements: Vec<ElementMap> },
-    Horizontal { elements: Vec<ElementMap> },
+    Window { id: Id, size_pos: SizeAndPos<T> },
+    Vertical { elements: Vec<ElementMap<T>> },
+    Horizontal { elements: Vec<ElementMap<T>> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,20 +53,20 @@ impl ReMapDirection {
     }
 }
 
-trait InsertCallback {
-    fn callback(&mut self, id: Id, s_a_p: SizeAndPos);
+trait InsertCallback<T: MapUnit> {
+    fn callback(&mut self, id: Id, s_a_p: SizeAndPos<T>);
 }
 
-impl<F> InsertCallback for F
+impl<F, T: MapUnit> InsertCallback<T> for F
 where
-    F: FnMut(Id, SizeAndPos),
+    F: FnMut(Id, SizeAndPos<T>),
 {
-    fn callback(&mut self, id: Id, s_a_p: SizeAndPos) {
+    fn callback(&mut self, id: Id, s_a_p: SizeAndPos<T>) {
         self(id, s_a_p)
     }
 }
 
-impl ElementMap {
+impl<T: MapUnit> ElementMap<T> {
     fn new() -> Self {
         Self::Empty
     }
@@ -73,11 +76,11 @@ impl ElementMap {
             _ => None,
         }
     }
-    pub fn size(&self) -> Size {
+    pub fn size(&self) -> Size<T> {
         match self {
             Self::Empty => Size {
-                width: 0.,
-                height: 0.,
+                width: T::zero(),
+                height: T::zero(),
             },
             Self::Window { size_pos, .. } => size_pos.size,
             Self::Vertical { elements } => {
@@ -95,9 +98,9 @@ impl ElementMap {
 
     // NOTE: how to design it? what should I do with the size_pos? how does it mean?
     // maybe I need minus
-    fn expand<F>(&mut self, direction: ReMapDirection, size_pos: SizeAndPos, f: &mut F)
+    fn expand<F>(&mut self, direction: ReMapDirection, size_pos: SizeAndPos<T>, f: &mut F)
     where
-        F: InsertCallback,
+        F: InsertCallback<T>,
     {
         match self {
             Self::Empty => {}
@@ -106,18 +109,18 @@ impl ElementMap {
         }
     }
 
-    pub fn width(&self) -> f32 {
+    pub fn width(&self) -> T {
         match self {
-            Self::Empty => 0.,
+            Self::Empty => T::two(),
             Self::Window { size_pos, .. } => size_pos.size.width,
             Self::Vertical { elements } => elements[0].width(),
             Self::Horizontal { elements } => elements.iter().map(|w| w.width()).sum(),
         }
     }
 
-    pub fn height(&self) -> f32 {
+    pub fn height(&self) -> T {
         match self {
-            Self::Empty => 0.,
+            Self::Empty => T::two(),
             Self::Window { size_pos, .. } => size_pos.size.height,
             Self::Vertical { elements } => elements[0].height(),
             Self::Horizontal { elements } => elements.iter().map(|w| w.height()).sum(),
@@ -161,7 +164,7 @@ impl ElementMap {
     #[must_use]
     fn delete<F>(&mut self, target: Id, f: &mut F) -> bool
     where
-        F: InsertCallback,
+        F: InsertCallback<T>,
     {
         let fit_way = match self {
             Self::Vertical { .. } => InsertWay::Vertical,
@@ -181,7 +184,7 @@ impl ElementMap {
             }
             Self::Vertical { elements } | Self::Horizontal { elements } => {
                 let mut position: Option<usize> = None;
-                let mut window_s_a_p: Option<SizeAndPos> = None;
+                let mut window_s_a_p: Option<SizeAndPos<T>> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
                     if let Self::Window { id, size_pos } = element
                         && *id == target
@@ -222,9 +225,16 @@ impl ElementMap {
     /// The return shows the new inserted position. it should be saved. but you can know it during
     /// the result show if the operation is succeeded
     #[must_use]
-    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
+    pub fn insert<F>(
+        &mut self,
+        id: Id,
+        target: Id,
+        way: InsertWay,
+        output_size: SizeAndPos<T>,
+        f: &mut F,
+    ) -> bool
     where
-        F: InsertCallback,
+        F: InsertCallback<T>,
     {
         let fit_way = match self {
             Self::Vertical { .. } => InsertWay::Vertical,
@@ -234,7 +244,7 @@ impl ElementMap {
         };
         match self {
             Self::Empty => {
-                let size = DISPLAY_SIZE;
+                let size = output_size;
                 f.callback(id, size);
                 *self = Self::Window { id, size_pos: size };
                 true
@@ -261,7 +271,7 @@ impl ElementMap {
             }
             Self::Vertical { elements } | Self::Horizontal { elements } => {
                 let mut to_insert_index: Option<usize> = None;
-                let mut to_return: Option<SizeAndPos> = None;
+                let mut to_return: Option<SizeAndPos<T>> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
                     if let ElementMap::Window { id: o_id, size_pos } = element
                         && *o_id == target
@@ -272,16 +282,16 @@ impl ElementMap {
                             to_insert_index = Some(index);
                             break;
                         }
-                        return element.insert(id, target, way, f);
+                        return element.insert(id, target, way, output_size, f);
                     }
-                    let insert_result = element.insert(id, target, way, f);
+                    let insert_result = element.insert(id, target, way, output_size, f);
                     if insert_result {
                         return insert_result;
                     }
                 }
                 if let (Some(index), Some(to_return)) = (to_insert_index, to_return) {
                     let size_pos = to_return.clone();
-                    let window = ElementMap::Window { id, size_pos };
+                    let window = Self::Window { id, size_pos };
                     elements.insert(index + 1, window);
                     return true;
                 }
@@ -301,19 +311,26 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
 
 fn main() {
     let mut abc = 10;
-    let mut element_map = ElementMap::new();
+    let mut element_map = ElementMap::<f32>::new();
     dbg!(&element_map);
     let _ = element_map.insert(
         Id::unique(),
         Id::MAIN,
         InsertWay::Vertical,
+        DISPLAY_SIZE,
         &mut |id, size| {
             abc += 1;
         },
     );
     println!("{abc}");
     dbg!(&element_map);
-    let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
+    let _ = element_map.insert(
+        Id::unique(),
+        Id(0),
+        InsertWay::Vertical,
+        DISPLAY_SIZE,
+        &mut |id, size| {},
+    );
     dbg!(&element_map);
     //element_map.insert(Id::unique(), Id(0), InsertWay::Horizontal);
     //dbg!(&element_map);
