@@ -76,8 +76,8 @@ impl ElementMap {
     pub fn size(&self) -> Size {
         match self {
             Self::Empty => Size {
-                width: 0,
-                height: 0,
+                width: 0.,
+                height: 0.,
             },
             Self::Window { size_pos, .. } => size_pos.size,
             Self::Vertical { elements } => {
@@ -106,18 +106,18 @@ impl ElementMap {
         }
     }
 
-    pub fn width(&self) -> i32 {
+    pub fn width(&self) -> f32 {
         match self {
-            Self::Empty => 0,
+            Self::Empty => 0.,
             Self::Window { size_pos, .. } => size_pos.size.width,
             Self::Vertical { elements } => elements[0].width(),
             Self::Horizontal { elements } => elements.iter().map(|w| w.width()).sum(),
         }
     }
 
-    pub fn height(&self) -> i32 {
+    pub fn height(&self) -> f32 {
         match self {
-            Self::Empty => 0,
+            Self::Empty => 0.,
             Self::Window { size_pos, .. } => size_pos.size.height,
             Self::Vertical { elements } => elements[0].height(),
             Self::Horizontal { elements } => elements.iter().map(|w| w.height()).sum(),
@@ -293,10 +293,10 @@ impl ElementMap {
 
 const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
     size: Size {
-        width: 1980,
-        height: 1080,
+        width: 1980.,
+        height: 1080.,
     },
-    position: Position { x: 0, y: 0 },
+    position: Position { x: 0., y: 0. },
 };
 
 fn main() {

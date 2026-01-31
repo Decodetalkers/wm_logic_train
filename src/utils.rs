@@ -1,6 +1,6 @@
 use std::ops::Add;
 #[derive(Debug, Clone, Copy)]
-pub struct Size<T = i32> {
+pub struct Size<T = f32> {
     pub width: T,
     pub height: T,
 }
@@ -19,10 +19,10 @@ macro_rules! impl_size {
     };
 }
 
-impl_size!(i32);
+impl_size!(f32);
 
 #[derive(Debug, Clone, Copy)]
-pub struct Position<T = i32> {
+pub struct Position<T = f32> {
     pub x: T,
     pub y: T,
 }
@@ -41,10 +41,10 @@ macro_rules! impl_position {
     };
 }
 
-impl_position!(i32);
+impl_position!(f32);
 
 #[derive(Debug, Clone, Copy)]
-pub struct SizeAndPos<T = i32>
+pub struct SizeAndPos<T = f32>
 where
     T: Copy,
 {
@@ -109,4 +109,4 @@ macro_rules! impl_size_and_pos {
 }
 
 //impl_size_and_pos!(u32, 2);
-impl_size_and_pos!(i32, 2);
+impl_size_and_pos!(f32, 2.);
