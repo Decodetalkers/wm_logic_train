@@ -247,7 +247,7 @@ pub enum InsertWay {
 
 impl<T: MapUnit> SizeAndPos<T> {
     fn vertical(&mut self) -> Self {
-        let width = self.size.width / T::two();
+        let width = self.size.width;
         let height = self.size.height / T::two();
         self.size.width = width;
         self.size.height = height;
@@ -262,7 +262,7 @@ impl<T: MapUnit> SizeAndPos<T> {
     }
     fn horizontal(&mut self) -> Self {
         let width = self.size.width / T::two();
-        let height = self.size.height / T::two();
+        let height = self.size.height;
         self.size.width = width;
         self.size.height = height;
         let x = self.position.x + width;
@@ -302,7 +302,7 @@ impl ReMapDirection {
 }
 
 impl<T: MinusAbleMatUnit> SizeAndPos<T> {
-    pub fn expend_change(&self, direction: ReMapDirection) -> Self {
+    pub fn change_disappear(&self, direction: ReMapDirection) -> Self {
         match direction {
             ReMapDirection::Top => Self {
                 position: Position {

@@ -290,7 +290,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         return true;
                     }
                 }
-                let (Some(pos), Some(s_a_p), Some(target_percent)) =
+                let (Some(pos), Some(disappear_info), Some(target_percent)) =
                     (position, window_s_a_p, target_percent)
                 else {
                     return false;
@@ -300,7 +300,9 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 let expand_way = ReMapDirection::expend_way(fit_way, start);
 
                 let element = &mut elements[adjust_pos];
-                let changed_size_and_pos = s_a_p.expend_change(expand_way);
+
+                // use the direction to calculate the diff change
+                let changed_size_and_pos = disappear_info.change_disappear(expand_way);
                 element.expand(
                     changed_size_and_pos,
                     target_percent.change_expand(fit_way),
@@ -453,6 +455,13 @@ fn main() {
     let mut element_map = ElementMap::new(DISPLAY_SIZE);
     dbg!(&element_map);
     // ID: 0
+    // -------------
+    // |           |
+    // |           |
+    // |     0     |
+    // |           |
+    // |           |
+    // -------------
     let _ = element_map.insert(
         Id::unique(),
         Id::MAIN,
@@ -463,12 +472,41 @@ fn main() {
     );
     dbg!(&element_map);
     // ID: 1
+    // ------------
+    // |          |
+    // |    0     |
+    // |          |
+    // ------------
+    // |          |
+    // |    1     |
+    // |          |
+    // ------------
     let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
     dbg!(&element_map);
     // ID: 2
+    // ------------
+    // |          |
+    // |    0     |
+    // ------------
+    // |          |
+    // |    2     |
+    // ------------
+    // |          |
+    // |    1     |
+    // ------------
     let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
     dbg!(&element_map);
     // ID: 3
+    // ------------
+    // | 0  |  3  |
+    // |    |     |
+    // ------------
+    // |          |
+    // |    2     |
+    // ------------
+    // |          |
+    // |    1     |
+    // ------------
     let _ = element_map.insert(
         Id::unique(),
         Id(0),
@@ -483,5 +521,7 @@ fn main() {
     let _ = element_map.delete(Id(0), &mut |id, size| {});
     dbg!(&element_map);
     let _ = element_map.delete(Id(1), &mut |id, size| {});
+    dbg!(&element_map);
+    let _ = element_map.delete(Id(3), &mut |id, size| {});
     dbg!(&element_map);
 }
