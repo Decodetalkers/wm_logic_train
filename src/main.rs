@@ -3,7 +3,9 @@ mod utils;
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 
-use crate::utils::{InsertWay, MapUnit, MinusAbleMatUnit, Position, Size, SizeAndPos};
+use crate::utils::{
+    InsertWay, MapUnit, MinusAbleMatUnit, Position, ReMapDirection, Size, SizeAndPos,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// The id of the window.
@@ -39,26 +41,6 @@ enum ElementMap<T: MapUnit = f32> {
         size_pos: SizeAndPos<T>,
     },
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ReMapDirection {
-    Left,
-    Right,
-    Top,
-    Bottom,
-}
-
-impl ReMapDirection {
-    fn expend_way(insert_way: InsertWay, start: bool) -> Self {
-        match (insert_way, start) {
-            (InsertWay::Horizontal, true) => Self::Left,
-            (InsertWay::Horizontal, false) => Self::Right,
-            (InsertWay::Vertical, true) => Self::Top,
-            (InsertWay::Vertical, false) => Self::Bottom,
-        }
-    }
-}
-
 trait InsertCallback<T: MapUnit> {
     fn callback(&mut self, id: Id, s_a_p: SizeAndPos<T>);
 }
@@ -84,9 +66,10 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     }
     pub fn size_pos(&self) -> SizeAndPos<T> {
         match self {
-            Self::Window { size_pos, .. } => *size_pos,
-            Self::EmptyOutput(size_pos) => *size_pos,
-            Self::Vertical { size_pos, .. } | Self::Horizontal { size_pos, .. } => *size_pos,
+            Self::Vertical { size_pos, .. }
+            | Self::Horizontal { size_pos, .. }
+            | Self::Window { size_pos, .. }
+            | Self::EmptyOutput(size_pos) => *size_pos,
         }
     }
     pub fn size(&self) -> Size<T> {
@@ -95,13 +78,16 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
 
     // NOTE: how to design it? what should I do with the size_pos? how does it mean?
     // maybe I need minus
-    fn expand<F>(&mut self, direction: ReMapDirection, size_pos: SizeAndPos<T>, f: &mut F)
+    fn expand<F>(&mut self, change: SizeAndPos<T>, f: &mut F)
     where
         F: InsertCallback<T>,
     {
         match self {
             Self::EmptyOutput(_) => {}
-            Self::Window { size_pos, .. } => {}
+            Self::Window { size_pos, id } => {
+                *size_pos += change;
+                f.callback(*id, *size_pos);
+            }
             _ => todo!(),
         }
     }
@@ -192,7 +178,8 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 let expand_way = ReMapDirection::expend_way(fit_way, start);
 
                 let element = &mut elements[adjust_pos];
-                element.expand(expand_way, s_a_p, f);
+                let changed_size_and_pos = s_a_p.expend_change(expand_way);
+                element.expand(s_a_p, f);
                 // NOTE: now we need a new function to expand the element.
                 // And we need a enum contains four fields
                 let _ = element;
