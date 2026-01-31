@@ -1,11 +1,13 @@
 use std::iter::Sum;
-use std::ops::{Add, Div};
+use std::ops::{Add, Div, Neg};
 pub(crate) trait MapUnit:
     Copy + Add<Output = Self> + Div<Output = Self> + Sum<Self>
 {
     fn zero() -> Self;
     fn two() -> Self;
 }
+
+pub(crate) trait MinusAbleMatUnit: MapUnit + Neg {}
 
 macro_rules! impl_unit {
     ($Type:ident, $value:expr, $value_2:expr) => {
@@ -19,9 +21,14 @@ macro_rules! impl_unit {
         }
     };
 }
-
-impl_unit!(f32, 0., 2.);
-impl_unit!(i32, 0, 2);
+macro_rules! impl_minus_able_unit {
+    ($Type:ident, $value:expr, $value_2:expr) => {
+        impl_unit!($Type, $value, $value_2);
+        impl MinusAbleMatUnit for $Type {}
+    };
+}
+impl_minus_able_unit!(f32, 0., 2.);
+impl_minus_able_unit!(i32, 0, 2);
 impl_unit!(u32, 0, 2);
 
 #[derive(Debug, Clone, Copy)]
@@ -56,10 +63,7 @@ impl<T: MapUnit> Add for Position<T> {
     }
 }
 #[derive(Debug, Clone, Copy)]
-pub struct SizeAndPos<T = f32>
-where
-    T: Copy,
-{
+pub struct SizeAndPos<T = f32> {
     pub size: Size<T>,
     pub position: Position<T>,
 }
