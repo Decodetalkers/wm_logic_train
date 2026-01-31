@@ -136,7 +136,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                     // Now we can caculte current height
                     current_y += height;
                     let s_and_p = element.size_pos();
-                    let diff_change = s_and_p - new_s_and_p;
+                    let diff_change = new_s_and_p - s_and_p;
                     element.expand(diff_change, Size::zero(), f);
                 }
             }
@@ -168,7 +168,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                     // Now we can caculte current height
                     current_x += width;
                     let s_and_p = element.size_pos();
-                    let diff_change = s_and_p - new_s_and_p;
+                    let diff_change = new_s_and_p - s_and_p;
                     element.expand(diff_change, Size::zero(), f);
                 }
             }
@@ -452,6 +452,7 @@ fn main() {
     let mut abc = 10;
     let mut element_map = ElementMap::new(DISPLAY_SIZE);
     dbg!(&element_map);
+    // ID: 0
     let _ = element_map.insert(
         Id::unique(),
         Id::MAIN,
@@ -461,8 +462,13 @@ fn main() {
         },
     );
     dbg!(&element_map);
+    // ID: 1
     let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
     dbg!(&element_map);
+    // ID: 2
+    let _ = element_map.insert(Id::unique(), Id(0), InsertWay::Vertical, &mut |id, size| {});
+    dbg!(&element_map);
+    // ID: 3
     let _ = element_map.insert(
         Id::unique(),
         Id(0),
@@ -472,6 +478,8 @@ fn main() {
     dbg!(&element_map);
 
     println!("=== delete ===");
+    let _ = element_map.delete(Id(2), &mut |id, size| {});
+    dbg!(&element_map);
     let _ = element_map.delete(Id(0), &mut |id, size| {});
     dbg!(&element_map);
     let _ = element_map.delete(Id(1), &mut |id, size| {});
