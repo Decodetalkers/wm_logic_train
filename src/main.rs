@@ -1,5 +1,9 @@
+mod utils;
+
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
+
+use crate::utils::{InsertWay, Position, Size, SizeAndPos};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// The id of the window.
@@ -19,82 +23,12 @@ impl Id {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Size<T = u32> {
-    width: T,
-    height: T,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Position<T = u32> {
-    x: T,
-    y: T,
-}
-#[derive(Debug, Clone, Copy)]
-struct SizeAndPos<T = u32>
-where
-    T: Copy,
-{
-    size: Size<T>,
-    position: Position<T>,
-}
-
-macro_rules! impl_size_and_pos {
-    ($Type: ident, $Div:expr) => {
-        impl SizeAndPos<$Type> {
-            fn vertical(&mut self) -> Self {
-                let width = self.size.width / $Div;
-                let height = self.size.height / $Div;
-                self.size.width = width;
-                self.size.height = height;
-                let y = self.position.y + height;
-                Self {
-                    size: Size { width, height },
-                    position: Position {
-                        x: self.position.x,
-                        y,
-                    },
-                }
-            }
-            fn horizontal(&mut self) -> Self {
-                let width = self.size.width / $Div;
-                let height = self.size.height / $Div;
-                self.size.width = width;
-                self.size.height = height;
-                let x = self.position.x + width;
-                Self {
-                    size: Size { width, height },
-                    position: Position {
-                        x,
-                        y: self.position.y,
-                    },
-                }
-            }
-            fn split(&mut self, way: InsertWay) -> Self {
-                match way {
-                    InsertWay::Vertical => self.vertical(),
-                    InsertWay::Horizontal => self.horizontal(),
-                }
-            }
-        }
-    };
-}
-
-impl_size_and_pos!(u32, 2);
-impl_size_and_pos!(i32, 2);
-
 #[derive(Debug, Clone)]
 enum ElementMap {
     Empty,
     Window { id: Id, size_pos: SizeAndPos },
     Vertical { elements: Vec<ElementMap> },
     Horizontal { elements: Vec<ElementMap> },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InsertWay {
-    Vertical,
-    Horizontal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,7 +106,7 @@ impl ElementMap {
         }
     }
 
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> i32 {
         match self {
             Self::Empty => 0,
             Self::Window { size_pos, .. } => size_pos.size.width,
@@ -181,7 +115,7 @@ impl ElementMap {
         }
     }
 
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> i32 {
         match self {
             Self::Empty => 0,
             Self::Window { size_pos, .. } => size_pos.size.height,
