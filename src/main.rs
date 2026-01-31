@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 
 use crate::utils::{
-    InsertWay, MapUnit, MinusAbleMatUnit, Position, ReMapDirection, Size, SizeAndPos,
+    InsertWay, MapUnit, MinusAbleMatUnit, Percentage, Position, ReMapDirection, Size, SizeAndPos,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -31,17 +31,17 @@ enum ElementMap<T: MapUnit = f32> {
     Window {
         id: Id,
         size_pos: SizeAndPos<T>,
-        percent: Size<f32>,
+        percent: Percentage,
     },
     Vertical {
         elements: Vec<ElementMap<T>>,
         size_pos: SizeAndPos<T>,
-        percent: Size<f32>,
+        percent: Percentage,
     },
     Horizontal {
         elements: Vec<ElementMap<T>>,
         size_pos: SizeAndPos<T>,
-        percent: Size<f32>,
+        percent: Percentage,
     },
 }
 trait InsertCallback<T: MapUnit> {
@@ -68,6 +68,15 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
             _ => None,
         }
     }
+    pub fn percent(&self) -> Percentage {
+        match self {
+            Self::Vertical { percent, .. }
+            | Self::Horizontal { percent, .. }
+            | Self::Window { percent, .. } => *percent,
+            Self::EmptyOutput(_) => Size::whole(),
+        }
+    }
+
     pub fn size_pos(&self) -> SizeAndPos<T> {
         match self {
             Self::Vertical { size_pos, .. }
@@ -77,17 +86,14 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    pub fn percent(&self) -> Size {
-        match self {
-            Self::Vertical { percent, .. }
-            | Self::Horizontal { percent, .. }
-            | Self::Window { percent, .. } => *percent,
-            Self::EmptyOutput(_) => Size::whole(),
-        }
-    }
-
     pub fn size(&self) -> Size<T> {
         self.size_pos().size
+    }
+    pub fn width(&self) -> T {
+        self.size().width
+    }
+    pub fn height(&self) -> T {
+        self.size().height
     }
 
     // NOTE: how to design it? what should I do with the size_pos? how does it mean?
@@ -107,7 +113,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 *percent += diff_percent;
                 f.callback(*id, *size_pos);
             }
-            // NOTE: this time only change the percent of the top, and the size of the emelemts
+            // NOTE: this time only change the percent of the top, and the size of the elements
             Self::Vertical {
                 elements,
                 size_pos,
@@ -175,10 +181,6 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    pub fn width(&self) -> T {
-        self.size().width
-    }
-
     pub fn set_percentage(&mut self, c_percent: Size) {
         match self {
             Self::EmptyOutput(_) => {}
@@ -195,10 +197,6 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
             | Self::Horizontal { size_pos, .. }
             | Self::Window { size_pos, .. } => *size_pos = c_size_pos,
         }
-    }
-
-    pub fn height(&self) -> T {
-        self.size().height
     }
 
     fn is_window(&self) -> bool {

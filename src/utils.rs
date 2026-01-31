@@ -136,6 +136,9 @@ impl Size<f32> {
     }
 }
 
+// We use Size<f32> to show the percentage of the size in the upper element
+pub type Percentage = Size<f32>;
+
 impl<T: MapUnit> AddAssign for Size<T> {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
