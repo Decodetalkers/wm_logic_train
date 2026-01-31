@@ -65,7 +65,7 @@ fn main() {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         },
     );
     assert!(r);
@@ -116,7 +116,7 @@ fn main() {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         },
     );
     assert!(r);
@@ -177,7 +177,7 @@ fn main() {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         },
     );
     assert!(r);
@@ -226,7 +226,7 @@ fn main() {
                 }
             }
         ),
-        _ => assert!(false),
+        _ => unreachable!(),
     });
     assert!(r);
     dbg!(&element_map);
@@ -262,7 +262,7 @@ fn main() {
                 }
             }
         ),
-        _ => assert!(false),
+        _ => unreachable!(),
     });
     assert!(r);
     dbg!(&element_map);
@@ -283,7 +283,7 @@ fn main() {
                 }
             }
         ),
-        _ => assert!(false),
+        _ => unreachable!(),
     });
     assert!(r);
     dbg!(&element_map);
@@ -293,7 +293,7 @@ fn main() {
     // |  EMPTY   |
     // |          |
     // ------------
-    let r = element_map.delete(Id(3), &mut |_, _| assert!(false));
+    let r = element_map.delete(Id(3), &mut |_, _| unreachable!());
     assert!(r);
     dbg!(&element_map);
 }

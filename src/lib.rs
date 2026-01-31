@@ -227,7 +227,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     pub fn find_element_mut(&mut self, target: Id) -> Option<&mut Self> {
         match self {
             Self::EmptyOutput(_) => None,
-            Self::Window { id, .. } => (*id == target).then(|| self),
+            Self::Window { id, .. } => (*id == target).then_some(self),
             Self::Vertical { elements, .. } | Self::Horizontal { elements, .. } => {
                 for element in elements {
                     let try_find = element.find_element_mut(target);
@@ -432,7 +432,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 if let (Some(index), Some(to_return), Some(percent)) =
                     (to_insert_index, to_return, new_percent)
                 {
-                    let size_pos = to_return.clone();
+                    let size_pos = to_return;
                     let window = Self::Window {
                         id,
                         size_pos,
@@ -441,7 +441,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                     elements.insert(index + 1, window);
                     return true;
                 }
-                return false;
+                false
             }
         }
     }
@@ -514,7 +514,7 @@ mod test {
                         }
                     }
                 ),
-                _ => assert!(false),
+                _ => unreachable!(),
             },
         );
         assert!(r);
@@ -565,7 +565,7 @@ mod test {
                             }
                         }
                     ),
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 },
             );
         assert!(r);
@@ -625,7 +625,7 @@ mod test {
                         }
                     }
                 ),
-                _ => assert!(false),
+                _ => unreachable!(),
             },
         );
         assert!(r);
@@ -673,7 +673,7 @@ mod test {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         });
         assert!(r);
         //  ------------
@@ -708,7 +708,7 @@ mod test {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         });
         assert!(r);
         //  ------------
@@ -728,7 +728,7 @@ mod test {
                     }
                 }
             ),
-            _ => assert!(false),
+            _ => unreachable!(),
         });
         assert!(r);
         //  ------------
@@ -737,7 +737,7 @@ mod test {
         // |  EMPTY   |
         // |          |
         // ------------
-        let r = element_map.delete(Id(3), &mut |_, _| assert!(false));
+        let r = element_map.delete(Id(3), &mut |_, _| unreachable!());
 
         assert!(r);
     }
