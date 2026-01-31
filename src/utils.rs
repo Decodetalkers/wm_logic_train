@@ -1,6 +1,6 @@
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, Neg, Sub, SubAssign};
-pub(crate) trait MapUnit:
+pub trait MapUnit:
     Copy
     + Add<Output = Self>
     + AddAssign
@@ -16,7 +16,7 @@ pub(crate) trait MapUnit:
     fn mul_f32(&self, val: f32) -> Self;
 }
 
-pub(crate) trait MinusAbleMatUnit: MapUnit + Neg<Output = Self> {}
+pub trait MinusAbleMatUnit: MapUnit + Neg<Output = Self> {}
 
 macro_rules! impl_unit {
     ($Type:ident, $value:expr, $value_2:expr) => {
@@ -204,7 +204,7 @@ impl<T: MapUnit> Position<T> {
         }
     }
 }
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SizeAndPos<T = f32> {
     pub size: Size<T>,
     pub position: Position<T>,
@@ -310,7 +310,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
             ReMapDirection::Top => Self {
                 position: Position {
                     x: T::zero(),
-                    y: -self.position.y,
+                    y: -self.size.height,
                 },
                 size: Size {
                     width: T::zero(),
@@ -326,7 +326,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
             },
             ReMapDirection::Left => Self {
                 position: Position {
-                    x: -self.position.x,
+                    x: -self.size.width,
                     y: T::zero(),
                 },
                 size: Size {

@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "experiment"
+name = "flyja_logic"
 version = "0.1.0"
