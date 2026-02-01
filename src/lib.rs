@@ -166,6 +166,10 @@ where
     }
 }
 
+impl<T: MapUnit> DispatchCallback<T> for () {
+    fn callback(&mut self, _id: Id, _size_pos: SizeAndPos<T>) {}
+}
+
 impl<T: MinusAbleMatUnit> Element<T> {
     /// new a new element with the [`SizeAndPos<T>`]
     pub fn new(size_pos: SizeAndPos<T>) -> Self {
