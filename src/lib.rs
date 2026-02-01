@@ -31,6 +31,7 @@ pub enum ElementMap<T: MapUnit = f32> {
     Window {
         id: Id,
         size_pos: SizeAndPos<T>,
+        // This storage current percentage in the container (it is in container)
         percent: Percentage,
     },
     Vertical {
@@ -45,23 +46,18 @@ pub enum ElementMap<T: MapUnit = f32> {
     },
 }
 
-mod sealed {
-    use super::*;
-    pub trait InsertCallback<T: MapUnit> {
-        fn callback(&mut self, id: Id, s_a_p: SizeAndPos<T>);
-    }
-
-    impl<F, T: MapUnit> InsertCallback<T> for F
-    where
-        F: FnMut(Id, SizeAndPos<T>),
-    {
-        fn callback(&mut self, id: Id, s_a_p: SizeAndPos<T>) {
-            self(id, s_a_p)
-        }
-    }
+pub trait DispatchCallback<T: MapUnit> {
+    fn callback(&mut self, id: Id, size_pos: SizeAndPos<T>);
 }
 
-use sealed::InsertCallback;
+impl<F, T: MapUnit> DispatchCallback<T> for F
+where
+    F: FnMut(Id, SizeAndPos<T>),
+{
+    fn callback(&mut self, id: Id, size_pos: SizeAndPos<T>) {
+        self(id, size_pos)
+    }
+}
 
 impl<T: MinusAbleMatUnit> ElementMap<T> {
     pub fn new(size_pos: SizeAndPos<T>) -> Self {
@@ -106,7 +102,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     // maybe I need minus
     fn expand<F>(&mut self, change: SizeAndPos<T>, diff_percent: Size, callback: &mut F)
     where
-        F: InsertCallback<T>,
+        F: DispatchCallback<T>,
     {
         match self {
             Self::EmptyOutput(_) => {}
@@ -208,6 +204,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     pub fn is_window(&self) -> bool {
         matches!(self, Self::Window { .. })
     }
+
     pub fn has_id(&self, target: Id) -> bool {
         match self {
             Self::Window { id, .. } => *id == target,
@@ -240,10 +237,57 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
+    /// Remap, when the container or the display changed, invoke this function
+    pub fn remap<F>(&mut self, c_size_pos: SizeAndPos<T>, f: &mut F)
+    where
+        F: DispatchCallback<T>,
+    {
+        match self {
+            Self::EmptyOutput(size_pos) => *size_pos = c_size_pos,
+            Self::Window { id, size_pos, .. } => {
+                *size_pos = c_size_pos;
+                f.callback(*id, *size_pos);
+            }
+            Self::Vertical {
+                elements, size_pos, ..
+            }
+            | Self::Horizontal {
+                elements, size_pos, ..
+            } => {
+                *size_pos = c_size_pos;
+                let mut current_x = size_pos.position.x;
+                let mut current_y = size_pos.position.y;
+                let con_width = size_pos.size.width;
+                let con_height = size_pos.size.height;
+                for element in elements {
+                    let Percentage {
+                        width: w_p,
+                        height: h_p,
+                    } = element.percent();
+                    let new_width = con_width.mul_f32(w_p);
+                    let new_height = con_height.mul_f32(h_p);
+                    let c_size_pos = SizeAndPos {
+                        size: Size {
+                            width: new_width,
+                            height: new_height,
+                        },
+                        position: Position {
+                            x: current_x,
+                            y: current_y,
+                        },
+                    };
+                    element.remap(c_size_pos, f);
+                    current_x += new_width;
+                    current_y += new_height;
+                }
+            }
+        }
+    }
+
     #[must_use]
     pub fn delete<F>(&mut self, target: Id, f: &mut F) -> bool
     where
-        F: InsertCallback<T>,
+        F: DispatchCallback<T>,
     {
         let fit_way = match self {
             Self::Vertical { .. } => InsertWay::Vertical,
@@ -342,7 +386,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     #[must_use]
     pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
     where
-        F: InsertCallback<T>,
+        F: DispatchCallback<T>,
     {
         let fit_way = match self {
             Self::Vertical { .. } => InsertWay::Vertical,
