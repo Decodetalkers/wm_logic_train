@@ -501,6 +501,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
     }
 
     // I will do it tomorror
+    // This function is used to check if the windows is on the right edge.
     fn drag_edge_check(&self, direction: ReMapDirection, target: Id) -> bool {
         match self {
             Self::EmptyOutput(_) => false,
@@ -550,9 +551,23 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         // But when it is in a container? how to do?
                         // This time, we need to check if component is in the top or bottom of the
                         // container. So, good, another function
-                        let position = elements
+                        //
+                        // Is it right? even the direction is well, we still need downgrade to
+                        // search all
+                        let try_position = elements
                             .iter()
-                            .position(|element| element.drag_edge_check(direction, target))?;
+                            .position(|element| element.drag_edge_check(direction, target));
+                        let Some(position) = try_position else {
+                            // If it is not in the container directly, we still need to search
+                            // every elements
+                            for element in elements {
+                                let try_find = element.drag_neighbor(direction, target);
+                                if try_find.is_some() {
+                                    return try_find;
+                                }
+                            }
+                            return None;
+                        };
                         let len = elements.len();
                         if direction == ReMapDirection::Top {
                             if position == 0 {
@@ -591,9 +606,20 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         // But when it is in a container? how to do?
                         // This time, we need to check if component is in the top or bottom of the
                         // container. So, good, another function
-                        let position = elements
+                        let try_position = elements
                             .iter()
-                            .position(|element| element.drag_edge_check(direction, target))?;
+                            .position(|element| element.drag_edge_check(direction, target));
+                        let Some(position) = try_position else {
+                            // If it is not in the container directly, we still need to search
+                            // every elements
+                            for element in elements {
+                                let try_find = element.drag_neighbor(direction, target);
+                                if try_find.is_some() {
+                                    return try_find;
+                                }
+                            }
+                            return None;
+                        };
                         let len = elements.len();
                         if direction == ReMapDirection::Left {
                             if position == 0 {
