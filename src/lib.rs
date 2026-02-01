@@ -97,9 +97,11 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     pub fn size(&self) -> Size<T> {
         self.size_pos().size
     }
+
     pub fn width(&self) -> T {
         self.size().width
     }
+
     pub fn height(&self) -> T {
         self.size().height
     }
@@ -189,7 +191,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    pub fn set_percentage(&mut self, c_percent: Size) {
+    fn set_percentage(&mut self, c_percent: Size) {
         match self {
             Self::EmptyOutput(_) => {}
             Self::Vertical { percent, .. }
@@ -198,7 +200,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    pub fn set_size_and_pos(&mut self, c_size_pos: SizeAndPos<T>) {
+    fn set_size_and_pos(&mut self, c_size_pos: SizeAndPos<T>) {
         match self {
             Self::EmptyOutput(size_pos)
             | Self::Vertical { size_pos, .. }
