@@ -226,8 +226,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    // NOTE: not just find it, but return the insert position
-    pub fn find_element_mut(&mut self, target: Id) -> Option<&mut Self> {
+    fn find_element_mut(&mut self, target: Id) -> Option<&mut Self> {
         match self {
             Self::EmptyOutput(_) => None,
             Self::Window { id, .. } => (*id == target).then_some(self),
@@ -241,6 +240,72 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 None
             }
         }
+    }
+
+    // NOTE: not just find it, but return the insert position
+    fn find_duo_element_mut(
+        &mut self,
+        target_one: Id,
+        target_two: Id,
+    ) -> (Option<&mut Self>, Option<&mut Self>) {
+        match self {
+            Self::EmptyOutput(_) => (None, None),
+            Self::Window { id, .. } => {
+                if *id == target_one {
+                    return (Some(self), None);
+                }
+                if *id == target_two {
+                    return (None, Some(self));
+                }
+                (None, None)
+            }
+            Self::Vertical { elements, .. } | Self::Horizontal { elements, .. } => {
+                let mut find_one = None;
+                let mut find_two = None;
+                for element in elements {
+                    if find_two.is_some() && find_two.is_some() {
+                        break;
+                    }
+                    if find_one.is_none() && find_two.is_none() {
+                        let (new_one, new_two) =
+                            element.find_duo_element_mut(target_one, target_two);
+                        find_one = new_one;
+                        find_two = new_two;
+                        continue;
+                    }
+                    if find_one.is_none() && find_two.is_some() {
+                        find_one = element.find_element_mut(target_one);
+                        continue;
+                    }
+                    find_two = element.find_element_mut(target_two);
+                }
+                (find_one, find_two)
+            }
+        }
+    }
+
+    /// Swap two elements
+    #[must_use]
+    pub fn swap<F>(&mut self, id: Id, target: Id, f: &mut F) -> bool
+    where
+        F: DispatchCallback<T>,
+    {
+        let (Some(element_one), Some(element_two)) = self.find_duo_element_mut(id, target) else {
+            return false;
+        };
+        // == swap size_pos ==
+        let size_pos_one = element_one.size_pos();
+        let size_pos_two = element_two.size_pos();
+        element_one.set_size_and_pos(size_pos_two);
+        element_two.set_size_and_pos(size_pos_one);
+        // == swap percent ==
+        let percent_one = element_one.percent();
+        let percent_two = element_two.percent();
+        element_one.set_percentage(percent_two);
+        element_two.set_percentage(percent_one);
+        f.callback(id, element_one.size_pos());
+        f.callback(target, element_two.size_pos());
+        true
     }
 
     /// Remap, when the container or the display changed, invoke this function
