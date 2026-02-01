@@ -47,7 +47,7 @@ impl Id {
 #[derive(Debug, Clone)]
 pub struct TopElementMap<T: MapUnit = f32>(Element<T>);
 impl<T: MinusAbleMatUnit> TopElementMap<T> {
-    /// create a new [TopElementMap<T>]
+    /// create a new [`TopElementMap<T>`]
     pub fn new(size_pos: SizeAndPos<T>) -> Self {
         Self(Element::new(size_pos))
     }
@@ -136,7 +136,7 @@ pub enum Element<T: MapUnit = f32> {
     },
     /// A vertical container
     Vertical {
-        /// All the [Element<T>] in the container
+        /// All the [`Element<T>`] in the container
         elements: Vec<Element<T>>,
         /// contains the information of size and position
         size_pos: SizeAndPos<T>,
@@ -144,7 +144,7 @@ pub enum Element<T: MapUnit = f32> {
         percent: Percentage,
     },
     Horizontal {
-        /// All the [Element<T>] in the container
+        /// All the [`Element<T>`] in the container
         elements: Vec<Element<T>>,
         /// contains the information of size and position
         size_pos: SizeAndPos<T>,
@@ -167,7 +167,7 @@ where
 }
 
 impl<T: MinusAbleMatUnit> Element<T> {
-    /// new a new element with the [SizeAndPos<T>]
+    /// new a new element with the [`SizeAndPos<T>`]
     pub fn new(size_pos: SizeAndPos<T>) -> Self {
         Self::EmptyOutput(size_pos)
     }
