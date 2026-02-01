@@ -23,6 +23,12 @@ impl Id {
     pub fn unique() -> Id {
         Id(COUNT.fetch_add(1, atomic::Ordering::Relaxed))
     }
+
+    /// It is used in unit test
+    #[cfg(test)]
+    fn next(&self) -> Id {
+        Id(self.0 + 1)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -242,6 +248,12 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     where
         F: DispatchCallback<T>,
     {
+        let fit_way = match self {
+            Self::Vertical { .. } => InsertWay::Vertical,
+            // NOTE: it will only be used in pattern three, so,
+            // this part will always be Self::Horizontal
+            _ => InsertWay::Horizontal,
+        };
         match self {
             Self::EmptyOutput(size_pos) => *size_pos = c_size_pos,
             Self::Window { id, size_pos, .. } => {
@@ -277,8 +289,10 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         },
                     };
                     element.remap(c_size_pos, f);
-                    current_x += new_width;
-                    current_y += new_height;
+                    match fit_way {
+                        InsertWay::Vertical => current_y += new_height,
+                        InsertWay::Horizontal => current_x += new_width,
+                    }
                 }
             }
         }
@@ -512,7 +526,7 @@ mod test {
         // |           |
         // |           |
         // -------------
-        let id = Id::unique();
+        let id = Id::MAIN;
         let r = element_map.insert(
             id,
             Id::MAIN,
@@ -533,8 +547,9 @@ mod test {
         // |    1     |
         // |          |
         // ------------
+        let id = id.next();
         let r = element_map.insert(
-            Id::unique(),
+            id,
             Id(0),
             InsertWay::Vertical,
             &mut |id, size_and_pos| match id {
@@ -573,45 +588,40 @@ mod test {
         // |          |
         // |    1     |
         // ------------
-        let r =
-            element_map.insert(
-                Id::unique(),
-                Id(0),
-                InsertWay::Vertical,
-                &mut |id, size| match id {
-                    Id(0) => assert_eq!(
-                        size,
-                        SizeAndPos {
-                            position: Position { x: 0., y: 0. },
-                            size: Size {
-                                width: 1980.,
-                                height: 270.
-                            }
-                        }
-                    ),
-                    Id(1) => assert_eq!(
-                        size,
-                        SizeAndPos {
-                            position: Position { x: 0., y: 720. },
-                            size: Size {
-                                width: 1980.,
-                                height: 270.
-                            }
-                        }
-                    ),
-                    Id(2) => assert_eq!(
-                        size,
-                        SizeAndPos {
-                            position: Position { x: 0., y: 360. },
-                            size: Size {
-                                width: 1980.,
-                                height: 540.
-                            }
-                        }
-                    ),
-                    _ => unreachable!(),
-                },
-            );
+        let id = id.next();
+        let r = element_map.insert(id, Id(0), InsertWay::Vertical, &mut |id, size| match id {
+            Id(0) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 0. },
+                    size: Size {
+                        width: 1980.,
+                        height: 270.
+                    }
+                }
+            ),
+            Id(1) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 720. },
+                    size: Size {
+                        width: 1980.,
+                        height: 270.
+                    }
+                }
+            ),
+            Id(2) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 360. },
+                    size: Size {
+                        width: 1980.,
+                        height: 540.
+                    }
+                }
+            ),
+            _ => unreachable!(),
+        });
         assert!(r);
         // ID: 3
         // ------------
@@ -624,54 +634,56 @@ mod test {
         // |          |
         // |    1     |
         // ------------
-        let r = element_map.insert(
-            Id::unique(),
-            Id(0),
-            InsertWay::Horizontal,
-            &mut |id, size_and_pos| match id {
-                Id(0) => assert_eq!(
-                    size_and_pos,
-                    SizeAndPos {
-                        position: Position { x: 0., y: 0. },
-                        size: Size {
-                            width: 990.,
-                            height: 270.
+        let id = id.next();
+        let r =
+            element_map.insert(
+                id,
+                Id(0),
+                InsertWay::Horizontal,
+                &mut |id, size_and_pos| match id {
+                    Id(0) => assert_eq!(
+                        size_and_pos,
+                        SizeAndPos {
+                            position: Position { x: 0., y: 0. },
+                            size: Size {
+                                width: 990.,
+                                height: 270.
+                            }
                         }
-                    }
-                ),
-                Id(1) => assert_eq!(
-                    size_and_pos,
-                    SizeAndPos {
-                        position: Position { x: 0., y: 720. },
-                        size: Size {
-                            width: 1980.,
-                            height: 540.
+                    ),
+                    Id(1) => assert_eq!(
+                        size_and_pos,
+                        SizeAndPos {
+                            position: Position { x: 0., y: 720. },
+                            size: Size {
+                                width: 1980.,
+                                height: 540.
+                            }
                         }
-                    }
-                ),
-                Id(2) => assert_eq!(
-                    size_and_pos,
-                    SizeAndPos {
-                        position: Position { x: 0., y: 360. },
-                        size: Size {
-                            width: 1980.,
-                            height: 270.
+                    ),
+                    Id(2) => assert_eq!(
+                        size_and_pos,
+                        SizeAndPos {
+                            position: Position { x: 0., y: 360. },
+                            size: Size {
+                                width: 1980.,
+                                height: 270.
+                            }
                         }
-                    }
-                ),
-                Id(3) => assert_eq!(
-                    size_and_pos,
-                    SizeAndPos {
-                        position: Position { x: 990., y: 0. },
-                        size: Size {
-                            width: 990.,
-                            height: 270.
+                    ),
+                    Id(3) => assert_eq!(
+                        size_and_pos,
+                        SizeAndPos {
+                            position: Position { x: 990., y: 0. },
+                            size: Size {
+                                width: 990.,
+                                height: 270.
+                            }
                         }
-                    }
-                ),
-                _ => unreachable!(),
-            },
-        );
+                    ),
+                    _ => unreachable!(),
+                },
+            );
         assert!(r);
 
         // ======= delete ===========
@@ -784,5 +796,89 @@ mod test {
         let r = element_map.delete(Id(3), &mut |_, _| unreachable!());
 
         assert!(r);
+    }
+
+    #[test]
+    fn remap_test() {
+        let remap_size_pos = SizeAndPos {
+            size: Size {
+                width: 2880.,
+                height: 1800.,
+            },
+            position: Position { x: 0., y: 0. },
+        };
+        // === simple remap ===
+        let mut element_map = ElementMap::new(DISPLAY_SIZE);
+        let id = Id::MAIN;
+        let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+
+        element_map.remap(remap_size_pos, &mut |id, size_pos| {
+            assert_eq!(id, Id(0));
+            assert_eq!(size_pos, remap_size_pos);
+        });
+
+        // === Vertical remap ===
+        let mut element_map = ElementMap::new(DISPLAY_SIZE);
+        let id = Id::MAIN;
+        let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+        let id_old = id;
+        let id = id.next();
+        let _ = element_map.insert(id, id_old, InsertWay::Vertical, &mut |_, _| {});
+
+        element_map.remap(remap_size_pos, &mut |id, size_pos| match id {
+            Id(0) => assert_eq!(
+                size_pos,
+                SizeAndPos {
+                    size: Size {
+                        width: 2880.,
+                        height: 900.
+                    },
+                    position: Position { x: 0., y: 0. }
+                }
+            ),
+            Id(1) => assert_eq!(
+                size_pos,
+                SizeAndPos {
+                    size: Size {
+                        width: 2880.,
+                        height: 900.
+                    },
+                    position: Position { x: 0., y: 900. }
+                }
+            ),
+            _ => unreachable!(),
+        });
+
+        // === Horizontal remap ===
+        let mut element_map = ElementMap::new(DISPLAY_SIZE);
+        let id = Id::MAIN;
+        let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+        let id_old = id;
+        let id = id.next();
+        let _ = element_map.insert(id, id_old, InsertWay::Horizontal, &mut |_, _| {});
+
+        element_map.remap(remap_size_pos, &mut |id, size_pos| match id {
+            Id(0) => assert_eq!(
+                size_pos,
+                SizeAndPos {
+                    size: Size {
+                        width: 1440.,
+                        height: 1800.
+                    },
+                    position: Position { x: 0., y: 0. }
+                }
+            ),
+            Id(1) => assert_eq!(
+                size_pos,
+                SizeAndPos {
+                    size: Size {
+                        width: 1440.,
+                        height: 1800.
+                    },
+                    position: Position { x: 1440., y: 0. }
+                }
+            ),
+            _ => unreachable!(),
+        });
     }
 }
