@@ -1,4 +1,4 @@
-use flyja_logic::{ElementMap, Id, InsertWay, Position, Size, SizeAndPos};
+use flyja_logic::{Id, InsertWay, Position, Size, SizeAndPos, TopElementMap};
 
 const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
     size: Size {
@@ -9,7 +9,7 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
 };
 
 fn main() {
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     // ID: 0
     // -------------
     // |           |

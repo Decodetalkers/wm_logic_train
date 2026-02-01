@@ -45,22 +45,110 @@ impl Id {
 }
 
 #[derive(Debug, Clone)]
-pub enum ElementMap<T: MapUnit = f32> {
+pub struct TopElementMap<T: MapUnit = f32>(Element<T>);
+impl<T: MinusAbleMatUnit> TopElementMap<T> {
+    /// create a new [TopElementMap<T>]
+    pub fn new(size_pos: SizeAndPos<T>) -> Self {
+        Self(Element::new(size_pos))
+    }
+
+    /// Get the information of size and position
+    pub fn size_pos(&self) -> SizeAndPos<T> {
+        self.0.size_pos()
+    }
+
+    pub fn position(&self) -> Position<T> {
+        self.0.position()
+    }
+
+    /// return the size of current container
+    pub fn size(&self) -> Size<T> {
+        self.0.size()
+    }
+
+    /// returnt the width of current container
+    pub fn width(&self) -> T {
+        self.0.width()
+    }
+
+    /// return the size of the container
+    pub fn height(&self) -> T {
+        self.0.height()
+    }
+
+    /// check if the container contains a window
+    pub fn has_id(&self, target: Id) -> bool {
+        self.0.has_id(target)
+    }
+
+    /// Find a window with id, and get all information
+    pub fn find_window(&self, target: Id) -> Option<&Element<T>> {
+        self.0.find_window(target)
+    }
+
+    /// Swap two elements
+    pub fn swap<F>(&mut self, id: Id, target: Id, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.swap(id, target, f)
+    }
+
+    /// Remap, when the container or the display changed, invoke this function
+    pub fn remap<F>(&mut self, c_size_pos: SizeAndPos<T>, f: &mut F)
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.remap(c_size_pos, f);
+    }
+
+    /// Delete a window from the map or container. If failed, return a error
+    /// It only fails when it cannot find this id
+    pub fn delete<F>(&mut self, target: Id, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.delete(target, f)
+    }
+
+    /// The return shows the new inserted position. it should be saved. but you can know it during
+    /// the result show if the operation is succeeded
+    /// It only fails when the target id is not found
+    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.insert(id, target, way, f)
+    }
+}
+#[derive(Debug, Clone)]
+pub enum Element<T: MapUnit = f32> {
+    /// Only when the container is empty
+    /// It contains the size and position information of the container
     EmptyOutput(SizeAndPos<T>),
     Window {
+        /// This id is unique, show the identy of the window
         id: Id,
+        /// contains the information of size and position
         size_pos: SizeAndPos<T>,
-        // This storage current percentage in the container (it is in container)
+        // This storage current percentage in the container (if it is in a container)
         percent: Percentage,
     },
+    /// A vertical container
     Vertical {
-        elements: Vec<ElementMap<T>>,
+        /// All the [Element<T>] in the container
+        elements: Vec<Element<T>>,
+        /// contains the information of size and position
         size_pos: SizeAndPos<T>,
+        // This storage current percentage in the container (if it is in a container)
         percent: Percentage,
     },
     Horizontal {
-        elements: Vec<ElementMap<T>>,
+        /// All the [Element<T>] in the container
+        elements: Vec<Element<T>>,
+        /// contains the information of size and position
         size_pos: SizeAndPos<T>,
+        // This storage current percentage in the container (if it is in a container)
         percent: Percentage,
     },
 }
@@ -78,17 +166,21 @@ where
     }
 }
 
-impl<T: MinusAbleMatUnit> ElementMap<T> {
+impl<T: MinusAbleMatUnit> Element<T> {
+    /// new a new element with the [SizeAndPos<T>]
     pub fn new(size_pos: SizeAndPos<T>) -> Self {
         Self::EmptyOutput(size_pos)
     }
 
+    /// Get the id
     pub fn id(&self) -> Option<Id> {
         match self {
             Self::Window { id, .. } => Some(*id),
             _ => None,
         }
     }
+
+    /// How much space does the element use in current container (the upper one)
     pub fn percent(&self) -> Percentage {
         match self {
             Self::Vertical { percent, .. }
@@ -98,6 +190,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
+    /// Get the information of size and position
     pub fn size_pos(&self) -> SizeAndPos<T> {
         match self {
             Self::Vertical { size_pos, .. }
@@ -107,14 +200,22 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
+    /// get the information of the position
+    pub fn position(&self) -> Position<T> {
+        self.size_pos().position
+    }
+
+    /// Get the information of size
     pub fn size(&self) -> Size<T> {
         self.size_pos().size
     }
 
+    /// get the information of width
     pub fn width(&self) -> T {
         self.size().width
     }
 
+    /// This will return the size of the container
     pub fn height(&self) -> T {
         self.size().height
     }
@@ -222,10 +323,12 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
+    /// check if the container is a window
     pub fn is_window(&self) -> bool {
         matches!(self, Self::Window { .. })
     }
 
+    /// Check if current container contains a window
     pub fn has_id(&self, target: Id) -> bool {
         match self {
             Self::Window { id, .. } => *id == target,
@@ -241,13 +344,29 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    fn find_element_mut(&mut self, target: Id) -> Option<&mut Self> {
+    /// Try to find a window with a id
+    pub fn find_window(&self, target: Id) -> Option<&Self> {
         match self {
             Self::EmptyOutput(_) => None,
             Self::Window { id, .. } => (*id == target).then_some(self),
             Self::Vertical { elements, .. } | Self::Horizontal { elements, .. } => {
                 for element in elements {
-                    let try_find = element.find_element_mut(target);
+                    let try_find = element.find_window(target);
+                    if try_find.is_some() {
+                        return try_find;
+                    }
+                }
+                None
+            }
+        }
+    }
+    fn find_window_mut(&mut self, target: Id) -> Option<&mut Self> {
+        match self {
+            Self::EmptyOutput(_) => None,
+            Self::Window { id, .. } => (*id == target).then_some(self),
+            Self::Vertical { elements, .. } | Self::Horizontal { elements, .. } => {
+                for element in elements {
+                    let try_find = element.find_window_mut(target);
                     if try_find.is_some() {
                         return try_find;
                     }
@@ -258,7 +377,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     }
 
     // NOTE: not just find it, but return the insert position
-    fn find_duo_element_mut(
+    fn find_duo_windows_mut(
         &mut self,
         target_one: Id,
         target_two: Id,
@@ -283,16 +402,16 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                     }
                     if find_one.is_none() && find_two.is_none() {
                         let (new_one, new_two) =
-                            element.find_duo_element_mut(target_one, target_two);
+                            element.find_duo_windows_mut(target_one, target_two);
                         find_one = new_one;
                         find_two = new_two;
                         continue;
                     }
                     if find_one.is_none() && find_two.is_some() {
-                        find_one = element.find_element_mut(target_one);
+                        find_one = element.find_window_mut(target_one);
                         continue;
                     }
-                    find_two = element.find_element_mut(target_two);
+                    find_two = element.find_window_mut(target_two);
                 }
                 (find_one, find_two)
             }
@@ -304,7 +423,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     where
         F: DispatchCallback<T>,
     {
-        let (Some(element_one), Some(element_two)) = self.find_duo_element_mut(id, target) else {
+        let (Some(element_one), Some(element_two)) = self.find_duo_windows_mut(id, target) else {
             return Err(Error);
         };
         // == swap size_pos ==
@@ -377,6 +496,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
+    /// It is used to delete a window from current container
     pub fn delete<F>(&mut self, target: Id, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
@@ -517,19 +637,19 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 *percent = new_percent;
                 let elements = vec![
                     self.clone(),
-                    ElementMap::Window {
+                    Element::Window {
                         id,
                         size_pos: new_size_pos,
                         percent: new_percent,
                     },
                 ];
                 *self = match way {
-                    InsertWay::Vertical => ElementMap::Vertical {
+                    InsertWay::Vertical => Element::Vertical {
                         elements,
                         size_pos: origin_size_pos,
                         percent: old_percent,
                     },
-                    InsertWay::Horizontal => ElementMap::Horizontal {
+                    InsertWay::Horizontal => Element::Horizontal {
                         elements,
                         size_pos: origin_size_pos,
                         percent: old_percent,
@@ -542,7 +662,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 let mut to_return: Option<SizeAndPos<T>> = None;
                 let mut new_percent: Option<Size> = None;
                 for (index, element) in elements.iter_mut().enumerate() {
-                    if let ElementMap::Window {
+                    if let Element::Window {
                         id: o_id,
                         size_pos,
                         percent,

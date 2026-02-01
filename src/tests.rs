@@ -9,7 +9,7 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
 
 #[test]
 fn insert_and_delete() {
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     // ID: 0
     // -------------
     // |           |
@@ -306,7 +306,7 @@ fn remap_test() {
         position: Position { x: 0., y: 0. },
     };
     // === simple remap ===
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
     let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
 
@@ -316,7 +316,7 @@ fn remap_test() {
     });
 
     // === Vertical remap ===
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
     let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
@@ -348,7 +348,7 @@ fn remap_test() {
     });
 
     // === Horizontal remap ===
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
     let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
@@ -383,7 +383,7 @@ fn remap_test() {
 #[test]
 fn swap_test() {
     // == Vertical test ==
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
     let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
@@ -415,7 +415,7 @@ fn swap_test() {
         })
         .expect("Should ok");
     // == Horizontal test ==
-    let mut element_map = ElementMap::new(DISPLAY_SIZE);
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
     let _ = element_map.insert(id, Id::MAIN, InsertWay::Horizontal, &mut |_, _| {});
     let id_old = id;
