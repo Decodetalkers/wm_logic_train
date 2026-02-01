@@ -500,6 +500,16 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
+    pub fn drag<F>(transfer: T, direction: ReMapDirection, target: Id, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        // NOTE: First we need to find the two neighhor with the direction and target
+        // Then apply the change to them
+        let change_target = SizeAndPos::drag_change(transfer, direction);
+        let change_neighbor = SizeAndPos::drag_change(transfer, direction.opposite());
+        Ok(())
+    }
     /// It is used to delete a window from current container
     pub fn delete<F>(&mut self, target: Id, f: &mut F) -> Result<()>
     where

@@ -8,6 +8,7 @@ pub trait MapUnit:
     + SubAssign
     + Div<Output = Self>
     + Sum<Self>
+    + PartialOrd
 {
     fn zero() -> Self;
     fn two() -> Self;
@@ -159,6 +160,15 @@ impl<T: MapUnit> Size<T> {
     }
 }
 
+impl<T: MinusAbleMatUnit> Size<T> {
+    /// There is not minus width or height in element
+    /// so every time we apply drag, we need to take care about it
+    pub fn size_legal(&self) -> bool {
+        let Self { width, height } = *self;
+        width < T::zero() || height < T::zero()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Position<T = f32> {
     pub x: T,
@@ -285,6 +295,62 @@ impl<T: MapUnit> SizeAndPos<T> {
         }
     }
 }
+impl<T: MinusAbleMatUnit> SizeAndPos<T> {
+    /// Apply every drag change to drag, we need check if it is illegal
+    pub(crate) fn size_legal(&self) -> bool {
+        self.size.size_legal()
+    }
+    /// Compute the change of drag
+    /// The `transfer` means the transference on the map
+    /// For example, if you drag it from up to bottom, for 10, the transfer is +10, direction Top
+    /// If it is from bottom to up, it is -10 direction Bottom
+    ///
+    /// Same logic in Left and Right
+    pub fn drag_change(transfer: T, direction: ReMapDirection) -> Self {
+        match direction {
+            ReMapDirection::Left => Self {
+                size: Size {
+                    width: -transfer,
+                    height: T::zero(),
+                },
+                position: Position {
+                    x: transfer,
+                    y: T::zero(),
+                },
+            },
+            ReMapDirection::Right => Self {
+                size: Size {
+                    width: transfer,
+                    height: T::zero(),
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: T::zero(),
+                },
+            },
+            ReMapDirection::Top => Self {
+                size: Size {
+                    width: T::zero(),
+                    height: -transfer,
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: transfer,
+                },
+            },
+            ReMapDirection::Bottom => Self {
+                size: Size {
+                    width: T::zero(),
+                    height: transfer,
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: T::zero(),
+                },
+            },
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReMapDirection {
@@ -292,6 +358,18 @@ pub enum ReMapDirection {
     Right,
     Top,
     Bottom,
+}
+
+impl ReMapDirection {
+    /// get the opposite value
+    pub fn opposite(&self) -> Self {
+        match self {
+            Self::Top => Self::Bottom,
+            Self::Bottom => Self::Top,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
 }
 
 impl ReMapDirection {
