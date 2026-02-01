@@ -500,12 +500,122 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
+    // I will do it tomorror
+    fn drag_edge_check(&self, direction: ReMapDirection, target: Id) -> bool {
+        match self {
+            Self::EmptyOutput(_) => false,
+            Self::Window { id, .. } => *id == target,
+            Self::Vertical {
+                elements,
+                size_pos,
+                percent,
+            } => {
+                todo!()
+            }
+            Self::Horizontal {
+                elements,
+                size_pos,
+                percent,
+            } => {
+                todo!()
+            }
+        }
+    }
+
     fn drag_neighbor(
-        &self,
+        &mut self,
         direction: ReMapDirection,
         target: Id,
     ) -> Option<(&mut Element<T>, &mut Element<T>)> {
-        todo!()
+        match self {
+            // NOTE: output and window only contains zero or one window, so it cannot return two
+            // elements
+            Self::EmptyOutput(_) | Self::Window { .. } => None,
+            Self::Vertical { elements, .. } => {
+                // NOTE: if the direction is what it wants, then try to find it
+                // else, it enter inside
+                match direction {
+                    ReMapDirection::Left | ReMapDirection::Right => {
+                        for element in elements {
+                            let try_find = element.drag_neighbor(direction, target);
+                            if try_find.is_some() {
+                                return try_find;
+                            }
+                        }
+                        None
+                    }
+                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                        // NOTE:  Then we need to find the important logic
+                        // If the windows is in the list, we need to return its neighbors
+                        // But when it is in a container? how to do?
+                        // This time, we need to check if component is in the top or bottom of the
+                        // container. So, good, another function
+                        let position = elements
+                            .iter()
+                            .position(|element| element.drag_edge_check(direction, target))?;
+                        let len = elements.len();
+                        if direction == ReMapDirection::Top {
+                            if position == 0 {
+                                return None;
+                            }
+                            let (slice_a, slice_b) = elements.split_at_mut(position);
+                            // [......position -1, position,...] => [.....position -1], [position,...]
+                            return Some((&mut slice_a[position - 1], &mut slice_b[0]));
+                        } else {
+                            if position == len - 1 {
+                                return None;
+                            }
+                            // [...., position,position+1,...] => [.....position], [position+1,...]
+                            let (slice_a, slice_b) = elements.split_at_mut(position + 1);
+                            Some((&mut slice_a[position], &mut slice_b[0]))
+                        }
+                    }
+                }
+            }
+            Self::Horizontal { elements, .. } => {
+                // NOTE: if the direction is what it wants, then try to find it
+                // else, it enter inside
+                match direction {
+                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                        for element in elements {
+                            let try_find = element.drag_neighbor(direction, target);
+                            if try_find.is_some() {
+                                return try_find;
+                            }
+                        }
+                        return None;
+                    }
+                    ReMapDirection::Left | ReMapDirection::Right => {
+                        // NOTE:  Then we need to find the important logic
+                        // If the windows is in the list, we need to return its neighbors
+                        // But when it is in a container? how to do?
+                        // This time, we need to check if component is in the top or bottom of the
+                        // container. So, good, another function
+                        let position = elements
+                            .iter()
+                            .position(|element| element.drag_edge_check(direction, target))?;
+                        let len = elements.len();
+                        if direction == ReMapDirection::Left {
+                            if position == 0 {
+                                return None;
+                            }
+                            let (slice_a, slice_b) = elements.split_at_mut(position);
+                            // [......position -1, position,...] => [.....position -1], [position,...]
+                            return Some((&mut slice_a[position - 1], &mut slice_b[0]));
+                        } else {
+                            // NOTE: if it is in the end, then of course, we cannot find a
+                            // position+1
+                            if position == len - 1 {
+                                return None;
+                            }
+                            // [...., position,position+1,...] => [.....position], [position+1,...]
+                            let (slice_a, slice_b) = elements.split_at_mut(position + 1);
+                            Some((&mut slice_a[position], &mut slice_b[0]))
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn drag<F>(
