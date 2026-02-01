@@ -500,14 +500,102 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
-    pub fn drag<F>(transfer: T, direction: ReMapDirection, target: Id, f: &mut F) -> Result<()>
+    fn drag_neighbor(
+        &self,
+        direction: ReMapDirection,
+        target: Id,
+    ) -> Option<(&mut Element<T>, &mut Element<T>)> {
+        todo!()
+    }
+
+    pub fn drag<F>(
+        &mut self,
+        transfer: T,
+        direction: ReMapDirection,
+        target: Id,
+        f: &mut F,
+    ) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
         // NOTE: First we need to find the two neighhor with the direction and target
         // Then apply the change to them
-        let change_target = SizeAndPos::drag_change(transfer, direction);
-        let change_neighbor = SizeAndPos::drag_change(transfer, direction.opposite());
+        // I got wrong here. We need to use the direction to decided who is first, who is next
+        let Some((element_a, element_b)) = self.drag_neighbor(direction, target) else {
+            // Here means we did not find the element
+            return Err(Error);
+        };
+        let (change_one, change_two) = match direction {
+            ReMapDirection::Left | ReMapDirection::Top => (
+                SizeAndPos::drag_change(transfer, direction.opposite()),
+                SizeAndPos::drag_change(transfer, direction),
+            ),
+            ReMapDirection::Right | ReMapDirection::Bottom => (
+                SizeAndPos::drag_change(transfer, direction),
+                SizeAndPos::drag_change(transfer, direction.opposite()),
+            ),
+        };
+        // NOTE: this means the drag is illegal, we need to stop it
+        if !(element_a.size() + change_one.size).size_legal()
+            || !(element_b.size() + change_two.size).size_legal()
+        {
+            // TODO: we need add a new element for this error
+            return Err(Error);
+        }
+
+        let pos_size_a = element_a.size_pos() + change_one;
+        element_a.remap(pos_size_a, f);
+        let pos_size_b = element_b.size_pos() + change_two;
+        element_b.remap(pos_size_b, f);
+
+        // NOTE: then we need to update the new percent, with the diff change
+        let percent_a = element_a.percent();
+        let size_a = element_a.size();
+        let percent_b = element_b.percent();
+        let size_b = element_b.size();
+        // NOTE: remap won't change the percent of the element, so
+        match direction {
+            ReMapDirection::Top | ReMapDirection::Bottom => {
+                // NOTE: up and down
+                // Here we can make sure the percent of width is 1.0
+                let total_h_percent = percent_a.height + percent_b.height;
+                let h_a = size_a.height;
+                let h_b = size_b.height;
+                let h_total = h_a + h_b;
+                let relative_percent_ha = h_a.to_f32() / h_total.to_f32();
+                let relative_percent_hb = h_b.to_f32() / h_total.to_f32();
+                let percent_ha = relative_percent_ha * total_h_percent;
+                let percent_hb = relative_percent_hb * total_h_percent;
+                element_a.set_percentage(Size {
+                    width: 1.,
+                    height: percent_ha,
+                });
+                element_b.set_percentage(Size {
+                    width: 1.,
+                    height: percent_hb,
+                });
+            }
+            ReMapDirection::Left | ReMapDirection::Right => {
+                // NOTE: left and right
+                // Here we can make sure the percent of height is 1.0
+                let total_w_percent = percent_a.width + percent_b.width;
+                let w_a = size_a.width;
+                let w_b = size_b.width;
+                let w_total = w_a + w_b;
+                let relative_percent_wa = w_a.to_f32() / w_total.to_f32();
+                let relative_percent_wb = w_b.to_f32() / w_total.to_f32();
+                let percent_wa = relative_percent_wa * total_w_percent;
+                let percent_wb = relative_percent_wb * total_w_percent;
+                element_a.set_percentage(Size {
+                    width: percent_wa,
+                    height: 1.,
+                });
+                element_b.set_percentage(Size {
+                    width: percent_wb,
+                    height: 1.,
+                });
+            }
+        }
         Ok(())
     }
     /// It is used to delete a window from current container
