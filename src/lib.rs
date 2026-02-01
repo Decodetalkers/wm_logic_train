@@ -4,6 +4,9 @@ mod utils;
 
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
+mod error;
+
+use error::ElementNotFound as Error;
 
 pub use crate::utils::{InsertWay, Percentage, Position, ReMapDirection, Size, SizeAndPos};
 
@@ -14,6 +17,14 @@ use crate::utils::{MapUnit, MinusAbleMatUnit};
 ///
 /// Internally Iced reserves `window::Id::MAIN` for the first window spawned.
 pub struct Id(pub u64);
+
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Id: {}", self.0))
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 static COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -289,13 +300,12 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
     }
 
     /// Swap two elements
-    #[must_use]
-    pub fn swap<F>(&mut self, id: Id, target: Id, f: &mut F) -> bool
+    pub fn swap<F>(&mut self, id: Id, target: Id, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
         let (Some(element_one), Some(element_two)) = self.find_duo_element_mut(id, target) else {
-            return false;
+            return Err(Error);
         };
         // == swap size_pos ==
         let size_pos_one = element_one.size_pos();
@@ -309,7 +319,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         element_two.set_percentage(percent_one);
         f.callback(id, element_one.size_pos());
         f.callback(target, element_two.size_pos());
-        true
+        Ok(())
     }
 
     /// Remap, when the container or the display changed, invoke this function
@@ -367,8 +377,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
         }
     }
 
-    #[must_use]
-    pub fn delete<F>(&mut self, target: Id, f: &mut F) -> bool
+    pub fn delete<F>(&mut self, target: Id, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
@@ -379,14 +388,14 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
             _ => InsertWay::Horizontal,
         };
         match self {
-            Self::EmptyOutput(_) => false,
+            Self::EmptyOutput(_) => Err(Error),
             // NOTE: this logic only comes when there is only one window exist
             Self::Window { id, size_pos, .. } => {
                 if *id != target {
-                    return false;
+                    return Err(Error);
                 }
                 *self = Self::EmptyOutput(*size_pos);
-                true
+                Ok(())
             }
             Self::Vertical {
                 elements,
@@ -417,14 +426,14 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         target_percent = Some(*percent);
                         break;
                     }
-                    if element.delete(target, f) {
-                        return true;
+                    if element.delete(target, f).is_ok() {
+                        return Ok(());
                     }
                 }
                 let (Some(pos), Some(disappear_info), Some(target_percent)) =
                     (position, window_s_a_p, target_percent)
                 else {
-                    return false;
+                    return Err(Error);
                 };
                 elements.remove(pos);
 
@@ -459,15 +468,14 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                     self.set_size_and_pos(o_size_pos);
                 }
 
-                true
+                Ok(())
             }
         }
     }
 
     /// The return shows the new inserted position. it should be saved. but you can know it during
     /// the result show if the operation is succeeded
-    #[must_use]
-    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> bool
+    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
@@ -488,7 +496,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         height: 1.,
                     },
                 };
-                true
+                Ok(())
             }
             Self::Window {
                 size_pos,
@@ -496,7 +504,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                 percent,
             } => {
                 if *o_id != target {
-                    return false;
+                    return Err(Error);
                 }
                 let origin_size_pos = *size_pos;
                 let new_size_pos = size_pos.split(way);
@@ -527,7 +535,7 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         percent: old_percent,
                     },
                 };
-                true
+                Ok(())
             }
             Self::Vertical { elements, .. } | Self::Horizontal { elements, .. } => {
                 let mut to_insert_index: Option<usize> = None;
@@ -552,8 +560,8 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         return element.insert(id, target, way, f);
                     }
                     let insert_result = element.insert(id, target, way, f);
-                    if insert_result {
-                        return insert_result;
+                    if insert_result.is_ok() {
+                        return Ok(());
                     }
                 }
                 if let (Some(index), Some(to_return), Some(percent)) =
@@ -566,11 +574,10 @@ impl<T: MinusAbleMatUnit> ElementMap<T> {
                         percent,
                     };
                     elements.insert(index + 1, window);
-                    return true;
+                    return Ok(());
                 }
-                false
+                Err(Error)
             }
         }
     }
 }
-
