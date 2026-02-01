@@ -242,9 +242,10 @@ impl<T: MapUnit> SubAssign for SizeAndPos<T> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum InsertWay {
     Vertical,
+    #[default]
     Horizontal,
 }
 
