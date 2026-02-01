@@ -6,7 +6,7 @@ use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 mod error;
 
-use error::ElementNotFound as Error;
+pub use error::ElementNotFound as Error;
 
 pub use crate::utils::{InsertWay, Percentage, Position, ReMapDirection, Size, SizeAndPos};
 
