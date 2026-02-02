@@ -579,7 +579,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
-    fn drag_neighbor(
+    fn drag_neighbors(
         &mut self,
         direction: ReMapDirection,
         target: Id,
@@ -594,7 +594,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 match direction {
                     ReMapDirection::Left | ReMapDirection::Right => {
                         for element in elements {
-                            let try_find = element.drag_neighbor(direction, target);
+                            let try_find = element.drag_neighbors(direction, target);
                             if try_find.is_some() {
                                 return try_find;
                             }
@@ -634,7 +634,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         let position = match (position, deep_position) {
                             (Some(index), None) => index,
                             (None, Some(try_position)) => {
-                                return elements[try_position].drag_neighbor(direction, target);
+                                return elements[try_position].drag_neighbors(direction, target);
                             }
                             (None, None) => {
                                 return None;
@@ -667,7 +667,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 match direction {
                     ReMapDirection::Top | ReMapDirection::Bottom => {
                         for element in elements {
-                            let try_find = element.drag_neighbor(direction, target);
+                            let try_find = element.drag_neighbors(direction, target);
                             if try_find.is_some() {
                                 return try_find;
                             }
@@ -704,7 +704,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         let position = match (position, deep_position) {
                             (Some(index), None) => index,
                             (None, Some(try_position)) => {
-                                return elements[try_position].drag_neighbor(direction, target);
+                                return elements[try_position].drag_neighbors(direction, target);
                             }
                             (None, None) => {
                                 return None;
@@ -749,7 +749,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         // NOTE: First we need to find the two neighhor with the direction and target
         // Then apply the change to them
         // I got wrong here. We need to use the direction to decided who is first, who is next
-        let Some((element_a, element_b)) = self.drag_neighbor(direction, target) else {
+        let Some((element_a, element_b)) = self.drag_neighbors(direction, target) else {
             // Here means we did not find the element
             return Err(Error::ElementNotFound);
         };
