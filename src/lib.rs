@@ -8,7 +8,7 @@ pub mod error;
 
 pub use error::FlyjaError as Error;
 
-pub use crate::utils::{InsertWay, Percentage, Position, ReMapDirection, Size, SizeAndPos};
+pub use crate::utils::{Direction, InsertWay, Percentage, Position, Size, SizeAndPos};
 
 use crate::utils::{MapUnit, MinusAbleMatUnit};
 
@@ -118,13 +118,13 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
     where
         F: DispatchCallback<T>,
     {
-        self.0.insert(id, target, way, f)
+        self.0.insert_new(id, target, way, f)
     }
 
     pub fn drag<F>(
         &mut self,
         transfer: T,
-        direction: ReMapDirection,
+        direction: Direction,
         target: Id,
         f: &mut F,
     ) -> Result<()>
@@ -516,7 +516,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
     // I will do it tomorror
     // This function is used to check if the windows is on the right edge.
     // bool means contains the target,
-    fn drag_edge_check(&self, direction: ReMapDirection, target: Id) -> Option<bool> {
+    fn drag_edge_check(&self, direction: Direction, target: Id) -> Option<bool> {
         match self {
             Self::EmptyOutput(_) => None,
             Self::Window { id, .. } => (*id == target).then_some(true),
@@ -525,7 +525,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 // last one
                 // else, just check if the child fit the drag check
                 match direction {
-                    ReMapDirection::Left | ReMapDirection::Right => {
+                    Direction::Left | Direction::Right => {
                         for element in elements {
                             match element.drag_edge_check(direction, target) {
                                 Some(val) => {
@@ -538,9 +538,9 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         }
                         None
                     }
-                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                    Direction::Top | Direction::Bottom => {
                         let mut check_index = 0;
-                        if direction == ReMapDirection::Bottom {
+                        if direction == Direction::Bottom {
                             let len = elements.len();
                             check_index = len - 1;
                         }
@@ -553,7 +553,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 // last one
                 // else, just check if the child fit the drag check
                 match direction {
-                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                    Direction::Top | Direction::Bottom => {
                         for element in elements {
                             match element.drag_edge_check(direction, target) {
                                 Some(val) => {
@@ -566,9 +566,9 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         }
                         None
                     }
-                    ReMapDirection::Left | ReMapDirection::Right => {
+                    Direction::Left | Direction::Right => {
                         let mut check_index = 0;
-                        if direction == ReMapDirection::Right {
+                        if direction == Direction::Right {
                             let len = elements.len();
                             check_index = len - 1;
                         }
@@ -581,7 +581,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
 
     fn drag_neighbors(
         &mut self,
-        direction: ReMapDirection,
+        direction: Direction,
         target: Id,
     ) -> Option<(&mut Element<T>, &mut Element<T>)> {
         match self {
@@ -592,7 +592,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 // NOTE: if the direction is what it wants, then try to find it
                 // else, it enter inside
                 match direction {
-                    ReMapDirection::Left | ReMapDirection::Right => {
+                    Direction::Left | Direction::Right => {
                         for element in elements {
                             let try_find = element.drag_neighbors(direction, target);
                             if try_find.is_some() {
@@ -601,7 +601,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         }
                         None
                     }
-                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                    Direction::Top | Direction::Bottom => {
                         // NOTE:  Then we need to find the important logic
                         // If the windows is in the list, we need to return its neighbors
                         // But when it is in a container? how to do?
@@ -643,7 +643,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         };
 
                         let len = elements.len();
-                        if direction == ReMapDirection::Top {
+                        if direction == Direction::Top {
                             if position == 0 {
                                 return None;
                             }
@@ -665,7 +665,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 // NOTE: if the direction is what it wants, then try to find it
                 // else, it enter inside
                 match direction {
-                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                    Direction::Top | Direction::Bottom => {
                         for element in elements {
                             let try_find = element.drag_neighbors(direction, target);
                             if try_find.is_some() {
@@ -674,7 +674,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         }
                         return None;
                     }
-                    ReMapDirection::Left | ReMapDirection::Right => {
+                    Direction::Left | Direction::Right => {
                         // NOTE:  Then we need to find the important logic
                         // If the windows is in the list, we need to return its neighbors
                         // But when it is in a container? how to do?
@@ -713,7 +713,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         };
 
                         let len = elements.len();
-                        if direction == ReMapDirection::Left {
+                        if direction == Direction::Left {
                             if position == 0 {
                                 return None;
                             }
@@ -739,7 +739,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
     pub fn drag<F>(
         &mut self,
         transfer: T,
-        direction: ReMapDirection,
+        direction: Direction,
         target: Id,
         f: &mut F,
     ) -> Result<()>
@@ -754,11 +754,11 @@ impl<T: MinusAbleMatUnit> Element<T> {
             return Err(Error::ElementNotFound);
         };
         let (change_one, change_two) = match direction {
-            ReMapDirection::Left | ReMapDirection::Top => (
+            Direction::Left | Direction::Top => (
                 SizeAndPos::drag_change(transfer, direction.opposite()),
                 SizeAndPos::drag_change(transfer, direction),
             ),
-            ReMapDirection::Right | ReMapDirection::Bottom => (
+            Direction::Right | Direction::Bottom => (
                 SizeAndPos::drag_change(transfer, direction),
                 SizeAndPos::drag_change(transfer, direction.opposite()),
             ),
@@ -783,7 +783,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         let size_b = element_b.size();
         // NOTE: remap won't change the percent of the element, so
         match direction {
-            ReMapDirection::Top | ReMapDirection::Bottom => {
+            Direction::Top | Direction::Bottom => {
                 // NOTE: up and down
                 // Here we can make sure the percent of width is 1.0
                 let total_h_percent = percent_a.height + percent_b.height;
@@ -803,7 +803,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                     height: percent_hb,
                 });
             }
-            ReMapDirection::Left | ReMapDirection::Right => {
+            Direction::Left | Direction::Right => {
                 // NOTE: left and right
                 // Here we can make sure the percent of height is 1.0
                 let total_w_percent = percent_a.width + percent_b.width;
@@ -889,7 +889,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
 
                 let start = pos == 0;
                 let adjust_pos = if start { 0 } else { pos - 1 };
-                let expand_way = ReMapDirection::expend_way(fit_way, start);
+                let expand_way = Direction::expend_way(fit_way, start);
 
                 let element = &mut elements[adjust_pos];
 
@@ -923,9 +923,8 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
-    /// The return shows the new inserted position. it should be saved. but you can know it during
-    /// the result show if the operation is succeeded
-    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
+    /// This is insert in for directions
+    pub fn insert<F>(&mut self, id: Id, target: Id, direction: Direction, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
@@ -957,13 +956,13 @@ impl<T: MinusAbleMatUnit> Element<T> {
                     return Err(Error::ElementNotFound);
                 }
                 let origin_size_pos = *size_pos;
-                let new_size_pos = size_pos.split(way);
+                let new_size_pos = size_pos.split(direction);
                 let old_percent = *percent;
                 f.callback(*o_id, *size_pos);
                 f.callback(id, new_size_pos);
                 // NOTE: because it is will not become a window anymore, it will be the half of the
                 // Vertical or Horizontal
-                let new_percent = Size::whole().split(2., way);
+                let new_percent = Size::whole().split(2., direction);
                 *percent = new_percent;
                 let elements = vec![
                     self.clone(),
@@ -973,13 +972,13 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         percent: new_percent,
                     },
                 ];
-                *self = match way {
-                    InsertWay::Vertical => Element::Vertical {
+                *self = match direction {
+                    Direction::Bottom | Direction::Top => Element::Vertical {
                         elements,
                         size_pos: origin_size_pos,
                         percent: old_percent,
                     },
-                    InsertWay::Horizontal => Element::Horizontal {
+                    Direction::Left | Direction::Right => Element::Horizontal {
                         elements,
                         size_pos: origin_size_pos,
                         percent: old_percent,
@@ -999,17 +998,17 @@ impl<T: MinusAbleMatUnit> Element<T> {
                     } = element
                         && *o_id == target
                     {
-                        if way == fit_way {
-                            let new_size_pos = size_pos.split(way);
-                            *percent = percent.split(2., way);
+                        if fit_way.fit_direction(direction) {
+                            let new_size_pos = size_pos.split(direction);
+                            *percent = percent.split(2., direction);
                             to_return = Some(new_size_pos);
                             to_insert_index = Some(index);
                             new_percent = Some(*percent);
                             break;
                         }
-                        return element.insert(id, target, way, f);
+                        return element.insert(id, target, direction, f);
                     }
-                    let insert_result = element.insert(id, target, way, f);
+                    let insert_result = element.insert(id, target, direction, f);
                     if insert_result.is_ok() {
                         return Ok(());
                     }
@@ -1029,5 +1028,14 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 Err(Error::ElementNotFound)
             }
         }
+    }
+
+    /// The return shows the new inserted position. it should be saved. but you can know it during
+    /// the result show if the operation is succeeded
+    pub fn insert_new<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.insert(id, target, way.into(), f)
     }
 }

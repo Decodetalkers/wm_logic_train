@@ -89,7 +89,13 @@ impl<T: MapUnit> Size<T> {
             ..*self
         }
     }
-    pub fn split(&self, pieces: T, way: InsertWay) -> Self {
+    pub fn split(&self, pieces: T, direction: Direction) -> Self {
+        match direction {
+            Direction::Left | Direction::Right => self.split_h(pieces),
+            Direction::Top | Direction::Bottom => self.split_v(pieces),
+        }
+    }
+    pub fn split_way(&self, pieces: T, way: InsertWay) -> Self {
         match way {
             InsertWay::Horizontal => self.split_h(pieces),
             InsertWay::Vertical => self.split_v(pieces),
@@ -259,8 +265,41 @@ pub enum InsertWay {
     Horizontal,
 }
 
+impl InsertWay {
+    pub(crate) fn fit_direction(&self, direction: Direction) -> bool {
+        match direction {
+            Direction::Left | Direction::Right => *self == InsertWay::Horizontal,
+            Direction::Top | Direction::Bottom => *self == InsertWay::Vertical,
+        }
+    }
+}
+
+impl From<InsertWay> for Direction {
+    fn from(value: InsertWay) -> Self {
+        match value {
+            InsertWay::Vertical => Self::Bottom,
+            InsertWay::Horizontal => Self::Right,
+        }
+    }
+}
+
 impl<T: MapUnit> SizeAndPos<T> {
-    fn vertical(&mut self) -> Self {
+    fn top(&mut self) -> Self {
+        let width = self.size.width;
+        let height = self.size.height / T::two();
+        self.size.width = width;
+        self.size.height = height;
+        let y = self.position.y;
+        self.position.y += height;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x: self.position.x,
+                y,
+            },
+        }
+    }
+    fn bottom(&mut self) -> Self {
         let width = self.size.width;
         let height = self.size.height / T::two();
         self.size.width = width;
@@ -274,7 +313,22 @@ impl<T: MapUnit> SizeAndPos<T> {
             },
         }
     }
-    fn horizontal(&mut self) -> Self {
+    fn left(&mut self) -> Self {
+        let width = self.size.width / T::two();
+        let height = self.size.height;
+        self.size.width = width;
+        self.size.height = height;
+        let x = self.position.x;
+        self.position.x += width;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x,
+                y: self.position.y,
+            },
+        }
+    }
+    fn right(&mut self) -> Self {
         let width = self.size.width / T::two();
         let height = self.size.height;
         self.size.width = width;
@@ -288,10 +342,18 @@ impl<T: MapUnit> SizeAndPos<T> {
             },
         }
     }
-    pub fn split(&mut self, way: InsertWay) -> Self {
+    pub fn split(&mut self, direction: Direction) -> Self {
+        match direction {
+            Direction::Left => self.left(),
+            Direction::Right => self.right(),
+            Direction::Top => self.top(),
+            Direction::Bottom => self.bottom(),
+        }
+    }
+    pub fn split_way(&mut self, way: InsertWay) -> Self {
         match way {
-            InsertWay::Vertical => self.vertical(),
-            InsertWay::Horizontal => self.horizontal(),
+            InsertWay::Vertical => self.bottom(),
+            InsertWay::Horizontal => self.right(),
         }
     }
 }
@@ -306,9 +368,9 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
     /// If it is from bottom to up, it is -10 direction Bottom
     ///
     /// Same logic in Left and Right
-    pub fn drag_change(transfer: T, direction: ReMapDirection) -> Self {
+    pub fn drag_change(transfer: T, direction: Direction) -> Self {
         match direction {
-            ReMapDirection::Left => Self {
+            Direction::Left => Self {
                 size: Size {
                     width: -transfer,
                     height: T::zero(),
@@ -318,7 +380,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     y: T::zero(),
                 },
             },
-            ReMapDirection::Right => Self {
+            Direction::Right => Self {
                 size: Size {
                     width: transfer,
                     height: T::zero(),
@@ -328,7 +390,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     y: T::zero(),
                 },
             },
-            ReMapDirection::Top => Self {
+            Direction::Top => Self {
                 size: Size {
                     width: T::zero(),
                     height: -transfer,
@@ -338,7 +400,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     y: transfer,
                 },
             },
-            ReMapDirection::Bottom => Self {
+            Direction::Bottom => Self {
                 size: Size {
                     width: T::zero(),
                     height: transfer,
@@ -353,14 +415,14 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReMapDirection {
+pub enum Direction {
     Left,
     Right,
     Top,
     Bottom,
 }
 
-impl ReMapDirection {
+impl Direction {
     /// get the opposite value
     pub fn opposite(&self) -> Self {
         match self {
@@ -372,7 +434,7 @@ impl ReMapDirection {
     }
 }
 
-impl ReMapDirection {
+impl Direction {
     pub fn expend_way(insert_way: InsertWay, start: bool) -> Self {
         match (insert_way, start) {
             (InsertWay::Horizontal, true) => Self::Left,
@@ -384,9 +446,9 @@ impl ReMapDirection {
 }
 
 impl<T: MinusAbleMatUnit> SizeAndPos<T> {
-    pub fn change_disappear(&self, direction: ReMapDirection) -> Self {
+    pub fn change_disappear(&self, direction: Direction) -> Self {
         match direction {
-            ReMapDirection::Top => Self {
+            Direction::Top => Self {
                 position: Position {
                     x: T::zero(),
                     y: -self.size.height,
@@ -396,14 +458,14 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     height: self.size.height,
                 },
             },
-            ReMapDirection::Bottom => Self {
+            Direction::Bottom => Self {
                 position: Position::zero(),
                 size: Size {
                     width: T::zero(),
                     height: self.size.height,
                 },
             },
-            ReMapDirection::Left => Self {
+            Direction::Left => Self {
                 position: Position {
                     x: -self.size.width,
                     y: T::zero(),
@@ -413,7 +475,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     height: T::zero(),
                 },
             },
-            ReMapDirection::Right => Self {
+            Direction::Right => Self {
                 position: Position::zero(),
                 size: Size {
                     width: self.size.width,
