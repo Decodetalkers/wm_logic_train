@@ -111,17 +111,29 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
         self.0.delete(target, f)
     }
 
+    // TODO: unit tests
     /// The return shows the new inserted position. it should be saved. but you can know it during
     /// the result show if the operation is succeeded
     /// It only fails when the target id is not found
-    pub fn insert<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
+    pub fn insert<F>(&mut self, id: Id, target: Id, direction: Direction, f: &mut F) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.insert(id, target, direction, f)
+    }
+
+    /// The return shows the new inserted position. it should be saved. but you can know it during
+    /// the result show if the operation is succeeded
+    /// It only fails when the target id is not found
+    pub fn insert_new<F>(&mut self, id: Id, target: Id, way: InsertWay, f: &mut F) -> Result<()>
     where
         F: DispatchCallback<T>,
     {
         self.0.insert_new(id, target, way, f)
     }
 
-    pub fn drag<F>(
+    // TODO: unit tests
+    pub fn drag_resize<F>(
         &mut self,
         transfer: T,
         direction: Direction,
@@ -131,7 +143,22 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
     where
         F: DispatchCallback<T>,
     {
-        self.0.drag(transfer, direction, target, f)
+        self.0.drag_resize(transfer, direction, target, f)
+    }
+
+    // TODO: unit tests
+    /// drag and drop an element
+    pub fn drag_and_drop<F>(
+        &mut self,
+        id: Id,
+        target: Id,
+        direction: Direction,
+        f: &mut F,
+    ) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.drag_and_drop(id, target, direction, f)
     }
 }
 #[derive(Debug, Clone)]
@@ -516,7 +543,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
     // I will do it tomorror
     // This function is used to check if the windows is on the right edge.
     // bool means contains the target,
-    fn drag_edge_check(&self, direction: Direction, target: Id) -> Option<bool> {
+    fn edge_check(&self, direction: Direction, target: Id) -> Option<bool> {
         match self {
             Self::EmptyOutput(_) => None,
             Self::Window { id, .. } => (*id == target).then_some(true),
@@ -527,7 +554,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 match direction {
                     Direction::Left | Direction::Right => {
                         for element in elements {
-                            match element.drag_edge_check(direction, target) {
+                            match element.edge_check(direction, target) {
                                 Some(val) => {
                                     return Some(val);
                                 }
@@ -544,7 +571,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                             let len = elements.len();
                             check_index = len - 1;
                         }
-                        elements[check_index].drag_edge_check(direction, target)
+                        elements[check_index].edge_check(direction, target)
                     }
                 }
             }
@@ -555,7 +582,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 match direction {
                     Direction::Top | Direction::Bottom => {
                         for element in elements {
-                            match element.drag_edge_check(direction, target) {
+                            match element.edge_check(direction, target) {
                                 Some(val) => {
                                     return Some(val);
                                 }
@@ -572,7 +599,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                             let len = elements.len();
                             check_index = len - 1;
                         }
-                        elements[check_index].drag_edge_check(direction, target)
+                        elements[check_index].edge_check(direction, target)
                     }
                 }
             }
@@ -617,7 +644,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         let mut position = None;
                         let mut deep_position = None;
                         for (index, element) in elements.iter().enumerate() {
-                            match element.drag_edge_check(direction, target) {
+                            match element.edge_check(direction, target) {
                                 Some(true) => {
                                     position = Some(index);
                                     break;
@@ -687,7 +714,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         let mut position = None;
                         let mut deep_position = None;
                         for (index, element) in elements.iter().enumerate() {
-                            match element.drag_edge_check(direction, target) {
+                            match element.edge_check(direction, target) {
                                 Some(true) => {
                                     position = Some(index);
                                     break;
@@ -736,7 +763,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         }
     }
 
-    pub fn drag<F>(
+    pub fn drag_resize<F>(
         &mut self,
         transfer: T,
         direction: Direction,
@@ -921,6 +948,21 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 Ok(())
             }
         }
+    }
+
+    /// Drag a window from map or other place and drop it
+    pub fn drag_and_drop<F>(
+        &mut self,
+        id: Id,
+        target: Id,
+        direction: Direction,
+        f: &mut F,
+    ) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        let _ = self.delete(id, f);
+        self.insert(id, target, direction, f)
     }
 
     /// This is insert in for directions

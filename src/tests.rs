@@ -20,7 +20,7 @@ fn insert_and_delete() {
     // -------------
     let id = Id::MAIN;
     element_map
-        .insert(
+        .insert_new(
             id,
             Id::MAIN,
             InsertWay::Vertical,
@@ -42,7 +42,7 @@ fn insert_and_delete() {
     // ------------
     let id = id.next();
     element_map
-        .insert(
+        .insert_new(
             id,
             Id(0),
             InsertWay::Vertical,
@@ -84,7 +84,7 @@ fn insert_and_delete() {
     // ------------
     let id = id.next();
     element_map
-        .insert(id, Id(0), InsertWay::Vertical, &mut |id, size| match id {
+        .insert_new(id, Id(0), InsertWay::Vertical, &mut |id, size| match id {
             Id(0) => assert_eq!(
                 size,
                 SizeAndPos {
@@ -131,7 +131,7 @@ fn insert_and_delete() {
     // ------------
     let id = id.next();
     element_map
-        .insert(
+        .insert_new(
             id,
             Id(0),
             InsertWay::Horizontal,
@@ -308,7 +308,7 @@ fn remap_test() {
     // === simple remap ===
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
-    let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
 
     element_map.remap(remap_size_pos, &mut |id, size_pos| {
         assert_eq!(id, Id(0));
@@ -318,10 +318,10 @@ fn remap_test() {
     // === Vertical remap ===
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
-    let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
     let id = id.next();
-    let _ = element_map.insert(id, id_old, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, id_old, InsertWay::Vertical, &mut |_, _| {});
 
     element_map.remap(remap_size_pos, &mut |id, size_pos| match id {
         Id(0) => assert_eq!(
@@ -350,10 +350,10 @@ fn remap_test() {
     // === Horizontal remap ===
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
-    let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
     let id = id.next();
-    let _ = element_map.insert(id, id_old, InsertWay::Horizontal, &mut |_, _| {});
+    let _ = element_map.insert_new(id, id_old, InsertWay::Horizontal, &mut |_, _| {});
 
     element_map.remap(remap_size_pos, &mut |id, size_pos| match id {
         Id(0) => assert_eq!(
@@ -385,10 +385,10 @@ fn swap_test() {
     // == Vertical test ==
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
-    let _ = element_map.insert(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, Id::MAIN, InsertWay::Vertical, &mut |_, _| {});
     let id_old = id;
     let id = id.next();
-    let _ = element_map.insert(id, id_old, InsertWay::Vertical, &mut |_, _| {});
+    let _ = element_map.insert_new(id, id_old, InsertWay::Vertical, &mut |_, _| {});
     element_map
         .swap(Id(0), Id(1), &mut |id, size_pos| match id {
             Id(0) => assert_eq!(
@@ -417,10 +417,10 @@ fn swap_test() {
     // == Horizontal test ==
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     let id = Id::MAIN;
-    let _ = element_map.insert(id, Id::MAIN, InsertWay::Horizontal, &mut |_, _| {});
+    let _ = element_map.insert_new(id, Id::MAIN, InsertWay::Horizontal, &mut |_, _| {});
     let id_old = id;
     let id = id.next();
-    let _ = element_map.insert(id, id_old, InsertWay::Horizontal, &mut |_, _| {});
+    let _ = element_map.insert_new(id, id_old, InsertWay::Horizontal, &mut |_, _| {});
     element_map
         .swap(Id(0), Id(1), &mut |id, size_pos| match id {
             Id(0) => assert_eq!(
