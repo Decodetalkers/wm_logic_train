@@ -601,20 +601,34 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         // NOTE: When the drag_edge_check is false, means that place contains the
                         // element, but the place maybe inside it. so we can not for loop all elements
                         // just loop that one
-                        let try_position = elements.iter().position(|element| {
-                            element.drag_edge_check(direction, target).unwrap_or(false)
-                        });
-                        let Some(position) = try_position else {
-                            // If it is not in the container directly, we still need to search
-                            // every elements
-                            for element in elements {
-                                let try_find = element.drag_neighbor(direction, target);
-                                if try_find.is_some() {
-                                    return try_find;
+                        let mut position = None;
+                        let mut deep_position = None;
+                        for (index, element) in elements.iter().enumerate() {
+                            match element.drag_edge_check(direction, target) {
+                                Some(true) => {
+                                    position = Some(index);
+                                    break;
+                                }
+                                Some(false) => {
+                                    deep_position = Some(index);
+                                    break;
+                                }
+                                None => {
+                                    continue;
                                 }
                             }
-                            return None;
+                        }
+                        let position = match (position, deep_position) {
+                            (Some(index), None) => index,
+                            (None, Some(try_position)) => {
+                                return elements[try_position].drag_neighbor(direction, target);
+                            }
+                            (None, None) => {
+                                return None;
+                            }
+                            _ => unreachable!(),
                         };
+
                         let len = elements.len();
                         if direction == ReMapDirection::Top {
                             if position == 0 {
@@ -653,20 +667,38 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         // But when it is in a container? how to do?
                         // This time, we need to check if component is in the top or bottom of the
                         // container. So, good, another function
-                        let try_position = elements.iter().position(|element| {
-                            element.drag_edge_check(direction, target).unwrap_or(false)
-                        });
-                        let Some(position) = try_position else {
-                            // If it is not in the container directly, we still need to search
-                            // every elements
-                            for element in elements {
-                                let try_find = element.drag_neighbor(direction, target);
-                                if try_find.is_some() {
-                                    return try_find;
+                        //
+                        // NOTE: When the drag_edge_check is false, means that place contains the
+                        // element, but the place maybe inside it. so we can not for loop all elements
+                        // just loop that one
+                        let mut position = None;
+                        let mut deep_position = None;
+                        for (index, element) in elements.iter().enumerate() {
+                            match element.drag_edge_check(direction, target) {
+                                Some(true) => {
+                                    position = Some(index);
+                                    break;
+                                }
+                                Some(false) => {
+                                    deep_position = Some(index);
+                                    break;
+                                }
+                                None => {
+                                    continue;
                                 }
                             }
-                            return None;
+                        }
+                        let position = match (position, deep_position) {
+                            (Some(index), None) => index,
+                            (None, Some(try_position)) => {
+                                return elements[try_position].drag_neighbor(direction, target);
+                            }
+                            (None, None) => {
+                                return None;
+                            }
+                            _ => unreachable!(),
                         };
+
                         let len = elements.len();
                         if direction == ReMapDirection::Left {
                             if position == 0 {
