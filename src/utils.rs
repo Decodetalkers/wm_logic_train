@@ -95,12 +95,7 @@ impl<T: MapUnit> Size<T> {
             Direction::Top | Direction::Bottom => self.split_v(pieces),
         }
     }
-    pub fn split_way(&self, pieces: T, way: InsertWay) -> Self {
-        match way {
-            InsertWay::Horizontal => self.split_h(pieces),
-            InsertWay::Vertical => self.split_v(pieces),
-        }
-    }
+
     pub fn percent_h(&self, percent: f32) -> Self {
         Self {
             width: self.width.mul_f32(percent),
@@ -348,12 +343,6 @@ impl<T: MapUnit> SizeAndPos<T> {
             Direction::Right => self.right(),
             Direction::Top => self.top(),
             Direction::Bottom => self.bottom(),
-        }
-    }
-    pub fn split_way(&mut self, way: InsertWay) -> Self {
-        match way {
-            InsertWay::Vertical => self.bottom(),
-            InsertWay::Horizontal => self.right(),
         }
     }
 }
