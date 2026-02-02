@@ -502,23 +502,66 @@ impl<T: MinusAbleMatUnit> Element<T> {
 
     // I will do it tomorror
     // This function is used to check if the windows is on the right edge.
-    fn drag_edge_check(&self, direction: ReMapDirection, target: Id) -> bool {
+    // bool means contains the target,
+    fn drag_edge_check(&self, direction: ReMapDirection, target: Id) -> Option<bool> {
         match self {
-            Self::EmptyOutput(_) => false,
-            Self::Window { id, .. } => *id == target,
-            Self::Vertical {
-                elements,
-                size_pos,
-                percent,
-            } => {
-                todo!()
+            Self::EmptyOutput(_) => None,
+            Self::Window { id, .. } => (*id == target).then_some(true),
+            Self::Vertical { elements, .. } => {
+                // NOTE: if the direction is fit current container, then it should be the first or
+                // last one
+                // else, just check if the child fit the drag check
+                match direction {
+                    ReMapDirection::Left | ReMapDirection::Right => {
+                        for element in elements {
+                            match element.drag_edge_check(direction, target) {
+                                Some(val) => {
+                                    return Some(val);
+                                }
+                                None => {
+                                    continue;
+                                }
+                            }
+                        }
+                        None
+                    }
+                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                        let mut check_index = 0;
+                        if direction == ReMapDirection::Bottom {
+                            let len = elements.len();
+                            check_index = len - 1;
+                        }
+                        elements[check_index].drag_edge_check(direction, target)
+                    }
+                }
             }
-            Self::Horizontal {
-                elements,
-                size_pos,
-                percent,
-            } => {
-                todo!()
+            Self::Horizontal { elements, .. } => {
+                // NOTE: if the direction is fit current container, then it should be the first or
+                // last one
+                // else, just check if the child fit the drag check
+                match direction {
+                    ReMapDirection::Top | ReMapDirection::Bottom => {
+                        for element in elements {
+                            match element.drag_edge_check(direction, target) {
+                                Some(val) => {
+                                    return Some(val);
+                                }
+                                None => {
+                                    continue;
+                                }
+                            }
+                        }
+                        None
+                    }
+                    ReMapDirection::Left | ReMapDirection::Right => {
+                        let mut check_index = 0;
+                        if direction == ReMapDirection::Right {
+                            let len = elements.len();
+                            check_index = len - 1;
+                        }
+                        elements[check_index].drag_edge_check(direction, target)
+                    }
+                }
             }
         }
     }
@@ -554,9 +597,13 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         //
                         // Is it right? even the direction is well, we still need downgrade to
                         // search all
-                        let try_position = elements
-                            .iter()
-                            .position(|element| element.drag_edge_check(direction, target));
+                        //
+                        // NOTE: When the drag_edge_check is false, means that place contains the
+                        // element, but the place maybe inside it. so we can not for loop all elements
+                        // just loop that one
+                        let try_position = elements.iter().position(|element| {
+                            element.drag_edge_check(direction, target).unwrap_or(false)
+                        });
                         let Some(position) = try_position else {
                             // If it is not in the container directly, we still need to search
                             // every elements
@@ -606,9 +653,9 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         // But when it is in a container? how to do?
                         // This time, we need to check if component is in the top or bottom of the
                         // container. So, good, another function
-                        let try_position = elements
-                            .iter()
-                            .position(|element| element.drag_edge_check(direction, target));
+                        let try_position = elements.iter().position(|element| {
+                            element.drag_edge_check(direction, target).unwrap_or(false)
+                        });
                         let Some(position) = try_position else {
                             // If it is not in the container directly, we still need to search
                             // every elements
