@@ -676,7 +676,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                             }
                             let (slice_a, slice_b) = elements.split_at_mut(position);
                             // [......position -1, position,...] => [.....position -1], [position,...]
-                            return Some((&mut slice_a[position - 1], &mut slice_b[0]));
+                            Some((&mut slice_a[position - 1], &mut slice_b[0]))
                         } else {
                             if position == len - 1 {
                                 return None;
@@ -699,7 +699,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                                 return try_find;
                             }
                         }
-                        return None;
+                        None
                     }
                     Direction::Left | Direction::Right => {
                         // NOTE:  Then we need to find the important logic
@@ -746,7 +746,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                             }
                             let (slice_a, slice_b) = elements.split_at_mut(position);
                             // [......position -1, position,...] => [.....position -1], [position,...]
-                            return Some((&mut slice_a[position - 1], &mut slice_b[0]));
+                            Some((&mut slice_a[position - 1], &mut slice_b[0]))
                         } else {
                             // NOTE: if it is in the end, then of course, we cannot find a
                             // position+1
