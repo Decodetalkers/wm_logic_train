@@ -297,7 +297,7 @@ impl<T: MapUnit> SizeAndPos<T> {
 }
 impl<T: MinusAbleMatUnit> SizeAndPos<T> {
     /// Apply every drag change to drag, we need check if it is illegal
-    pub(crate) fn size_legal(&self) -> bool {
+    pub fn size_legal(&self) -> bool {
         self.size.size_legal()
     }
     /// Compute the change of drag

@@ -4,9 +4,9 @@ mod utils;
 
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
-mod error;
+pub mod error;
 
-pub use error::ElementNotFound as Error;
+pub use error::FlyjaError as Error;
 
 pub use crate::utils::{InsertWay, Percentage, Position, ReMapDirection, Size, SizeAndPos};
 
@@ -119,6 +119,19 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
         F: DispatchCallback<T>,
     {
         self.0.insert(id, target, way, f)
+    }
+
+    pub fn drag<F>(
+        &mut self,
+        transfer: T,
+        direction: ReMapDirection,
+        target: Id,
+        f: &mut F,
+    ) -> Result<()>
+    where
+        F: DispatchCallback<T>,
+    {
+        self.0.drag(transfer, direction, target, f)
     }
 }
 #[derive(Debug, Clone)]
@@ -428,7 +441,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         F: DispatchCallback<T>,
     {
         let (Some(element_one), Some(element_two)) = self.find_duo_windows_mut(id, target) else {
-            return Err(Error);
+            return Err(Error::ElementNotFound);
         };
         // == swap size_pos ==
         let size_pos_one = element_one.size_pos();
@@ -738,7 +751,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
         // I got wrong here. We need to use the direction to decided who is first, who is next
         let Some((element_a, element_b)) = self.drag_neighbor(direction, target) else {
             // Here means we did not find the element
-            return Err(Error);
+            return Err(Error::ElementNotFound);
         };
         let (change_one, change_two) = match direction {
             ReMapDirection::Left | ReMapDirection::Top => (
@@ -755,7 +768,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
             || !(element_b.size() + change_two.size).size_legal()
         {
             // TODO: we need add a new element for this error
-            return Err(Error);
+            return Err(Error::DragIllegal);
         }
 
         let pos_size_a = element_a.size_pos() + change_one;
@@ -825,11 +838,11 @@ impl<T: MinusAbleMatUnit> Element<T> {
             _ => InsertWay::Horizontal,
         };
         match self {
-            Self::EmptyOutput(_) => Err(Error),
+            Self::EmptyOutput(_) => Err(Error::ElementNotFound),
             // NOTE: this logic only comes when there is only one window exist
             Self::Window { id, size_pos, .. } => {
                 if *id != target {
-                    return Err(Error);
+                    return Err(Error::ElementNotFound);
                 }
                 *self = Self::EmptyOutput(*size_pos);
                 Ok(())
@@ -870,7 +883,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 let (Some(pos), Some(disappear_info), Some(target_percent)) =
                     (position, window_s_a_p, target_percent)
                 else {
-                    return Err(Error);
+                    return Err(Error::ElementNotFound);
                 };
                 elements.remove(pos);
 
@@ -941,7 +954,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 percent,
             } => {
                 if *o_id != target {
-                    return Err(Error);
+                    return Err(Error::ElementNotFound);
                 }
                 let origin_size_pos = *size_pos;
                 let new_size_pos = size_pos.split(way);
@@ -1013,7 +1026,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                     elements.insert(index + 1, window);
                     return Ok(());
                 }
-                Err(Error)
+                Err(Error::ElementNotFound)
             }
         }
     }
