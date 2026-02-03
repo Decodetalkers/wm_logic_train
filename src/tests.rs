@@ -6,9 +6,185 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
     },
     position: Position { x: 0., y: 0. },
 };
+#[test]
+fn insert_test() {
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
+    // ID: 0
+    // -------------
+    // |           |
+    // |           |
+    // |     0     |
+    // |           |
+    // |           |
+    // -------------
+    let id = Id::MAIN;
+    element_map
+        .insert(id, Id::MAIN, Direction::Top, &mut |in_id, size_and_pos| {
+            assert_eq!(in_id, id);
+            assert_eq!(size_and_pos, DISPLAY_SIZE);
+        })
+        .expect("Insert should succeeded");
+    // ID: 1
+    // ------------
+    // |          |
+    // |    1     |
+    // |          |
+    // ------------
+    // |          |
+    // |    0     |
+    // |          |
+    // ------------
+    let id = id.next();
+    element_map
+        .insert(
+            id,
+            Id(0),
+            Direction::Top,
+            &mut |id, size_and_pos| match id {
+                Id(1) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 0. },
+                        size: Size {
+                            width: 1980.,
+                            height: 540.
+                        }
+                    }
+                ),
+                Id(0) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 540. },
+                        size: Size {
+                            width: 1980.,
+                            height: 540.
+                        }
+                    }
+                ),
+                _ => unreachable!(),
+            },
+        )
+        .expect("Insert should succeeded");
+    dbg!(&element_map);
+    // ID: 2
+    // ------------
+    // |          |
+    // |          |
+    // |          |
+    // |    1     |
+    // ------------
+    // |          |
+    // |    2     |
+    // ------------
+    // |          |
+    // |    0     |
+    // ------------
+    let id = id.next();
+    element_map
+        .insert(id, Id(0), Direction::Top, &mut |id, size| match id {
+            Id(1) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 0. },
+                    size: Size {
+                        width: 1980.,
+                        height: 540.
+                    }
+                }
+            ),
+            Id(0) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 810. },
+                    size: Size {
+                        width: 1980.,
+                        height: 270.
+                    }
+                }
+            ),
+            Id(2) => assert_eq!(
+                size,
+                SizeAndPos {
+                    position: Position { x: 0., y: 540. },
+                    size: Size {
+                        width: 1980.,
+                        height: 270.
+                    }
+                }
+            ),
+            _ => unreachable!(),
+        })
+        .expect("Insert should succeeded");
+    dbg!(&element_map);
+    // ID: 3
+    // ------------
+    // |    1     |
+    // |          |
+    // |          |
+    // |          |
+    // |          |
+    // ------------
+    // |          |
+    // |    2     |
+    // ------------
+    // |    |     |
+    // | 3  |  0  |
+    // ------------
+    let id = id.next();
+    element_map
+        .insert(
+            id,
+            Id(0),
+            Direction::Left,
+            &mut |id, size_and_pos| match id {
+                Id(0) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 990., y: 810. },
+                        size: Size {
+                            width: 990.,
+                            height: 270.
+                        }
+                    }
+                ),
+                Id(1) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 0. },
+                        size: Size {
+                            width: 1980.,
+                            height: 540.
+                        }
+                    }
+                ),
+                Id(2) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 540. },
+                        size: Size {
+                            width: 1980.,
+                            height: 270.
+                        }
+                    }
+                ),
+                Id(3) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 810. },
+                        size: Size {
+                            width: 990.,
+                            height: 270.
+                        }
+                    }
+                ),
+                _ => unreachable!(),
+            },
+        )
+        .expect("Insert should succeeded");
+}
 
 #[test]
-fn insert_and_delete() {
+fn insert_new_and_delete() {
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
     // ID: 0
     // -------------

@@ -111,7 +111,6 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
         self.0.delete(target, f)
     }
 
-    // TODO: unit tests
     /// The return shows the new inserted position. it should be saved. but you can know it during
     /// the result show if the operation is succeeded
     /// It only fails when the target id is not found
@@ -1006,14 +1005,25 @@ impl<T: MinusAbleMatUnit> Element<T> {
                 // Vertical or Horizontal
                 let new_percent = Size::whole().split(2., direction);
                 *percent = new_percent;
-                let elements = vec![
-                    self.clone(),
-                    Element::Window {
-                        id,
-                        size_pos: new_size_pos,
-                        percent: new_percent,
-                    },
-                ];
+                let elements = if direction.is_end() {
+                    vec![
+                        self.clone(),
+                        Element::Window {
+                            id,
+                            size_pos: new_size_pos,
+                            percent: new_percent,
+                        },
+                    ]
+                } else {
+                    vec![
+                        Element::Window {
+                            id,
+                            size_pos: new_size_pos,
+                            percent: new_percent,
+                        },
+                        self.clone(),
+                    ]
+                };
                 *self = match direction {
                     Direction::Bottom | Direction::Top => Element::Vertical {
                         elements,
@@ -1046,6 +1056,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                             to_return = Some(new_size_pos);
                             to_insert_index = Some(index);
                             new_percent = Some(*percent);
+                            f.callback(*o_id, *size_pos);
                             break;
                         }
                         return element.insert(id, target, direction, f);
@@ -1064,7 +1075,10 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         size_pos,
                         percent,
                     };
-                    elements.insert(index + 1, window);
+                    println!("index = {index}, {direction:?}");
+                    let index = if direction.is_end() { index + 1 } else { index };
+                    println!("index = {index}");
+                    elements.insert(index, window);
                     return Ok(());
                 }
                 Err(Error::ElementNotFound)

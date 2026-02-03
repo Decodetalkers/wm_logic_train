@@ -412,6 +412,12 @@ pub enum Direction {
 }
 
 impl Direction {
+    pub(crate) fn is_end(&self) -> bool {
+        match self {
+            Direction::Left | Direction::Top => false,
+            Direction::Right | Direction::Bottom => true,
+        }
+    }
     /// get the opposite value
     pub fn opposite(&self) -> Self {
         match self {
