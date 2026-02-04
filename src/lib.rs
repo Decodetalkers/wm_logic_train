@@ -1086,6 +1086,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                     };
                     let index = if direction.is_end() { index + 1 } else { index };
                     elements.insert(index, window);
+                    f.callback(id, size_pos);
                     return Ok(());
                 }
                 Err(Error::ElementNotFound)
