@@ -166,7 +166,7 @@ impl<T: MinusAbleMatUnit> Size<T> {
     /// so every time we apply drag, we need to take care about it
     pub fn size_legal(&self) -> bool {
         let Self { width, height } = *self;
-        width < T::zero() || height < T::zero()
+        width >= T::zero() || height >= T::zero()
     }
 }
 

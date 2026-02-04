@@ -1084,9 +1084,7 @@ impl<T: MinusAbleMatUnit> Element<T> {
                         size_pos,
                         percent,
                     };
-                    println!("index = {index}, {direction:?}");
                     let index = if direction.is_end() { index + 1 } else { index };
-                    println!("index = {index}");
                     elements.insert(index, window);
                     return Ok(());
                 }
