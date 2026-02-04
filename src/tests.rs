@@ -76,31 +76,16 @@ fn drag_drop() {
     element_map
         .drag_and_drop(Id(1), Id(0), Direction::Left, &mut |id, size_and_pos| {
             match id {
-                Id(0) => {
-                    if times == 0 {
-                        assert_eq!(
-                            size_and_pos,
-                            SizeAndPos {
-                                size: Size {
-                                    width: 1980.,
-                                    height: 1080.
-                                },
-                                position: Position { x: 0., y: 0. }
-                            }
-                        )
-                    } else if times == 1 {
-                        assert_eq!(
-                            size_and_pos,
-                            SizeAndPos {
-                                size: Size {
-                                    width: 990.,
-                                    height: 1080.
-                                },
-                                position: Position { x: 990., y: 0. }
-                            }
-                        )
+                Id(0) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        size: Size {
+                            width: 990.,
+                            height: 1080.
+                        },
+                        position: Position { x: 990., y: 0. }
                     }
-                }
+                ),
                 Id(1) => assert_eq!(
                     size_and_pos,
                     SizeAndPos {
@@ -116,7 +101,7 @@ fn drag_drop() {
             times += 1;
         })
         .expect("Should succeeded");
-    assert_eq!(times, 3);
+    assert_eq!(times, 2);
 }
 
 #[test]

@@ -2,6 +2,7 @@
 mod tests;
 mod utils;
 
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 pub mod error;
@@ -156,7 +157,16 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
     where
         F: DispatchCallback<T>,
     {
-        self.0.drag_and_drop(id, target, direction, f)
+        // NOTE: this will make the size change will only happened once
+        let mut ids = HashMap::new();
+        self.0
+            .drag_and_drop(id, target, direction, &mut |id, new_size_and_pos| {
+                ids.insert(id, new_size_and_pos);
+            })?;
+        for (id, size_pos) in ids.iter() {
+            f.callback(*id, *size_pos);
+        }
+        Ok(())
     }
 }
 #[derive(Debug, Clone)]
