@@ -1,11 +1,7 @@
-use std::error::Error;
-#[derive(Debug, Clone, Copy)]
-pub struct ElementNotFound;
-
-impl std::fmt::Display for ElementNotFound {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Not Found Element")
-    }
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+pub enum FlyjaError {
+    #[error("Element not found")]
+    ElementNotFound,
+    #[error("This drag is illegal, size be minus")]
+    DragIllegal,
 }
-
-impl Error for ElementNotFound {}

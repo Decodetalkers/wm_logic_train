@@ -8,6 +8,7 @@ pub trait MapUnit:
     + SubAssign
     + Div<Output = Self>
     + Sum<Self>
+    + PartialOrd
 {
     fn zero() -> Self;
     fn two() -> Self;
@@ -88,12 +89,13 @@ impl<T: MapUnit> Size<T> {
             ..*self
         }
     }
-    pub fn split(&self, pieces: T, way: InsertWay) -> Self {
-        match way {
-            InsertWay::Horizontal => self.split_h(pieces),
-            InsertWay::Vertical => self.split_v(pieces),
+    pub fn split(&self, pieces: T, direction: Direction) -> Self {
+        match direction {
+            Direction::Left | Direction::Right => self.split_h(pieces),
+            Direction::Top | Direction::Bottom => self.split_v(pieces),
         }
     }
+
     pub fn percent_h(&self, percent: f32) -> Self {
         Self {
             width: self.width.mul_f32(percent),
@@ -156,6 +158,15 @@ impl<T: MapUnit> Size<T> {
             width: T::zero(),
             height: T::zero(),
         }
+    }
+}
+
+impl<T: MinusAbleMatUnit> Size<T> {
+    /// There is not minus width or height in element
+    /// so every time we apply drag, we need to take care about it
+    pub fn size_legal(&self) -> bool {
+        let Self { width, height } = *self;
+        width >= T::zero() || height >= T::zero()
     }
 }
 
@@ -249,8 +260,41 @@ pub enum InsertWay {
     Horizontal,
 }
 
+impl InsertWay {
+    pub(crate) fn fit_direction(&self, direction: Direction) -> bool {
+        match direction {
+            Direction::Left | Direction::Right => *self == InsertWay::Horizontal,
+            Direction::Top | Direction::Bottom => *self == InsertWay::Vertical,
+        }
+    }
+}
+
+impl From<InsertWay> for Direction {
+    fn from(value: InsertWay) -> Self {
+        match value {
+            InsertWay::Vertical => Self::Bottom,
+            InsertWay::Horizontal => Self::Right,
+        }
+    }
+}
+
 impl<T: MapUnit> SizeAndPos<T> {
-    fn vertical(&mut self) -> Self {
+    fn top(&mut self) -> Self {
+        let width = self.size.width;
+        let height = self.size.height / T::two();
+        self.size.width = width;
+        self.size.height = height;
+        let y = self.position.y;
+        self.position.y += height;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x: self.position.x,
+                y,
+            },
+        }
+    }
+    fn bottom(&mut self) -> Self {
         let width = self.size.width;
         let height = self.size.height / T::two();
         self.size.width = width;
@@ -264,7 +308,22 @@ impl<T: MapUnit> SizeAndPos<T> {
             },
         }
     }
-    fn horizontal(&mut self) -> Self {
+    fn left(&mut self) -> Self {
+        let width = self.size.width / T::two();
+        let height = self.size.height;
+        self.size.width = width;
+        self.size.height = height;
+        let x = self.position.x;
+        self.position.x += width;
+        Self {
+            size: Size { width, height },
+            position: Position {
+                x,
+                y: self.position.y,
+            },
+        }
+    }
+    fn right(&mut self) -> Self {
         let width = self.size.width / T::two();
         let height = self.size.height;
         self.size.width = width;
@@ -278,23 +337,99 @@ impl<T: MapUnit> SizeAndPos<T> {
             },
         }
     }
-    pub fn split(&mut self, way: InsertWay) -> Self {
-        match way {
-            InsertWay::Vertical => self.vertical(),
-            InsertWay::Horizontal => self.horizontal(),
+    pub fn split(&mut self, direction: Direction) -> Self {
+        match direction {
+            Direction::Left => self.left(),
+            Direction::Right => self.right(),
+            Direction::Top => self.top(),
+            Direction::Bottom => self.bottom(),
+        }
+    }
+}
+impl<T: MinusAbleMatUnit> SizeAndPos<T> {
+    /// Apply every drag change to drag, we need check if it is illegal
+    pub fn size_legal(&self) -> bool {
+        self.size.size_legal()
+    }
+    /// Compute the change of drag
+    /// The `transfer` means the transference on the map
+    /// For example, if you drag it from up to bottom, for 10, the transfer is +10, direction Top
+    /// If it is from bottom to up, it is -10 direction Bottom
+    ///
+    /// Same logic in Left and Right
+    pub fn drag_change(transfer: T, direction: Direction) -> Self {
+        match direction {
+            Direction::Left => Self {
+                size: Size {
+                    width: -transfer,
+                    height: T::zero(),
+                },
+                position: Position {
+                    x: transfer,
+                    y: T::zero(),
+                },
+            },
+            Direction::Right => Self {
+                size: Size {
+                    width: transfer,
+                    height: T::zero(),
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: T::zero(),
+                },
+            },
+            Direction::Top => Self {
+                size: Size {
+                    width: T::zero(),
+                    height: -transfer,
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: transfer,
+                },
+            },
+            Direction::Bottom => Self {
+                size: Size {
+                    width: T::zero(),
+                    height: transfer,
+                },
+                position: Position {
+                    x: T::zero(),
+                    y: T::zero(),
+                },
+            },
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReMapDirection {
+pub enum Direction {
     Left,
     Right,
     Top,
     Bottom,
 }
 
-impl ReMapDirection {
+impl Direction {
+    pub(crate) fn is_end(&self) -> bool {
+        match self {
+            Direction::Left | Direction::Top => false,
+            Direction::Right | Direction::Bottom => true,
+        }
+    }
+    /// get the opposite value
+    pub fn opposite(&self) -> Self {
+        match self {
+            Self::Top => Self::Bottom,
+            Self::Bottom => Self::Top,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
+}
+
+impl Direction {
     pub fn expend_way(insert_way: InsertWay, start: bool) -> Self {
         match (insert_way, start) {
             (InsertWay::Horizontal, true) => Self::Left,
@@ -306,9 +441,9 @@ impl ReMapDirection {
 }
 
 impl<T: MinusAbleMatUnit> SizeAndPos<T> {
-    pub fn change_disappear(&self, direction: ReMapDirection) -> Self {
+    pub fn change_disappear(&self, direction: Direction) -> Self {
         match direction {
-            ReMapDirection::Top => Self {
+            Direction::Top => Self {
                 position: Position {
                     x: T::zero(),
                     y: -self.size.height,
@@ -318,14 +453,14 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     height: self.size.height,
                 },
             },
-            ReMapDirection::Bottom => Self {
+            Direction::Bottom => Self {
                 position: Position::zero(),
                 size: Size {
                     width: T::zero(),
                     height: self.size.height,
                 },
             },
-            ReMapDirection::Left => Self {
+            Direction::Left => Self {
                 position: Position {
                     x: -self.size.width,
                     y: T::zero(),
@@ -335,7 +470,7 @@ impl<T: MinusAbleMatUnit> SizeAndPos<T> {
                     height: T::zero(),
                 },
             },
-            ReMapDirection::Right => Self {
+            Direction::Right => Self {
                 position: Position::zero(),
                 size: Size {
                     width: self.size.width,

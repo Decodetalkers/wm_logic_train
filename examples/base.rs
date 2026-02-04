@@ -20,7 +20,7 @@ fn main() {
     // -------------
     let id = Id::unique();
     element_map
-        .insert(
+        .insert_new(
             id,
             Id::MAIN,
             InsertWay::Vertical,
@@ -42,7 +42,7 @@ fn main() {
     // |          |
     // ------------
     element_map
-        .insert(
+        .insert_new(
             Id::unique(),
             Id(0),
             InsertWay::Vertical,
@@ -84,7 +84,7 @@ fn main() {
     // |    1     |
     // ------------
     element_map
-        .insert(
+        .insert_new(
             Id::unique(),
             Id(0),
             InsertWay::Vertical,
@@ -136,7 +136,7 @@ fn main() {
     // |    1     |
     // ------------
     element_map
-        .insert(
+        .insert_new(
             Id::unique(),
             Id(0),
             InsertWay::Horizontal,

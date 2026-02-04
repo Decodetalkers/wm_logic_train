@@ -2,9 +2,11 @@
 
 ## Api
 
-* remap (handle size and position change)
-* swap (quite easy to implement)
 * drag (most important)
+
+## Drag
+* first: find the top split two elements
+* remap them, and compute their percentage
 
 ## Create wayland wm
 
