@@ -145,7 +145,6 @@ impl<T: MinusAbleMatUnit> TopElementMap<T> {
         self.0.drag_resize(transfer, direction, target, f)
     }
 
-    // TODO: unit tests
     /// drag and drop an element
     pub fn drag_and_drop<F>(
         &mut self,

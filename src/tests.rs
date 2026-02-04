@@ -6,6 +6,119 @@ const DISPLAY_SIZE: SizeAndPos = SizeAndPos {
     },
     position: Position { x: 0., y: 0. },
 };
+
+#[test]
+fn drag_drop() {
+    let mut element_map = TopElementMap::new(DISPLAY_SIZE);
+    // ID: 0
+    // -------------
+    // |           |
+    // |           |
+    // |     0     |
+    // |           |
+    // |           |
+    // -------------
+    let id = Id::MAIN;
+    element_map
+        .insert(id, Id::MAIN, Direction::Top, &mut |in_id, size_and_pos| {
+            assert_eq!(in_id, id);
+            assert_eq!(size_and_pos, DISPLAY_SIZE);
+        })
+        .expect("Insert should succeeded");
+    // ID: 1
+    // ------------
+    // |          |
+    // |    1     |
+    // |          |
+    // ------------
+    // |          |
+    // |    0     |
+    // |          |
+    // ------------
+    let id = id.next();
+    element_map
+        .insert(
+            id,
+            Id(0),
+            Direction::Top,
+            &mut |id, size_and_pos| match id {
+                Id(1) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 0. },
+                        size: Size {
+                            width: 1980.,
+                            height: 540.
+                        }
+                    }
+                ),
+                Id(0) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        position: Position { x: 0., y: 540. },
+                        size: Size {
+                            width: 1980.,
+                            height: 540.
+                        }
+                    }
+                ),
+                _ => unreachable!(),
+            },
+        )
+        .expect("Insert should succeeded");
+    // ID: 1
+    // -----------------------
+    // |         |           |
+    // |   1     |     0     |
+    // |         |           |
+    // -----------------------
+    let mut times = 0;
+    element_map
+        .drag_and_drop(Id(1), Id(0), Direction::Left, &mut |id, size_and_pos| {
+            match id {
+                Id(0) => {
+                    if times == 0 {
+                        assert_eq!(
+                            size_and_pos,
+                            SizeAndPos {
+                                size: Size {
+                                    width: 1980.,
+                                    height: 1080.
+                                },
+                                position: Position { x: 0., y: 0. }
+                            }
+                        )
+                    } else if times == 1 {
+                        assert_eq!(
+                            size_and_pos,
+                            SizeAndPos {
+                                size: Size {
+                                    width: 990.,
+                                    height: 1080.
+                                },
+                                position: Position { x: 990., y: 0. }
+                            }
+                        )
+                    }
+                }
+                Id(1) => assert_eq!(
+                    size_and_pos,
+                    SizeAndPos {
+                        size: Size {
+                            width: 990.,
+                            height: 1080.
+                        },
+                        position: Position { x: 0., y: 0. }
+                    }
+                ),
+                _ => unreachable!(),
+            }
+            times += 1;
+        })
+        .expect("Should succeeded");
+    assert_eq!(times, 3);
+}
+
 #[test]
 fn insert_test() {
     let mut element_map = TopElementMap::new(DISPLAY_SIZE);
@@ -65,7 +178,6 @@ fn insert_test() {
             },
         )
         .expect("Insert should succeeded");
-    dbg!(&element_map);
     // ID: 2
     // ------------
     // |          |
